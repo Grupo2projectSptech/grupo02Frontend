@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Building2, Truck, Package, LogOut, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
+import logo_outlet from '../../assets/images/logo_outlet.png';
 const links = [
   { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true },
   { to: '/empresas',    label: 'Empresas',     icon: Building2 },
@@ -19,9 +19,11 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-logo">
         <div className="logo-mark">
-          <div className="logo-icon">🛍️</div>
+          <div className="logo-icon">
+            <img src={logo_outlet} alt="Logo Outlet Party" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <div className="logo-text">
-            <div className="logo-name">Outlet Party</div>
+            {/* <div className="logo-name">Outlet Party</div> */}
             <div className="logo-sub">Sistema de Gestão</div>
           </div>
         </div>
