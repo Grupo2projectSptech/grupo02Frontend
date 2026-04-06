@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
 import Fornecedores from './pages/Fornecedores';
 import Produtos from './pages/Produtos';
+import Cadastro from './pages/Cadastro';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -29,6 +30,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/cadastro" element={isAuthenticated ? <Navigate to="/" replace/> : <Cadastro/> } />
       <Route path="/" element={<PrivateRoute><AppLayout><Dashboard /></AppLayout></PrivateRoute>} />
       <Route path="/empresas" element={<PrivateRoute><AppLayout><Empresas /></AppLayout></PrivateRoute>} />
       <Route path="/fornecedores" element={<PrivateRoute><AppLayout><Fornecedores /></AppLayout></PrivateRoute>} />

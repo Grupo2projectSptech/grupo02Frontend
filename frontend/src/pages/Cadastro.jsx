@@ -4,7 +4,7 @@ import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle } from 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
-import Cadastro from './Cadastro';
+import Login from './Login';
 import "../app.css";
 import "../index.css";
 
@@ -14,7 +14,7 @@ const USERS = [
   { id: 2, username: 'gerente', password: 'gerente123', name: 'Gerente Geral', role: 'Gerente' },
 ];
 
-export default function Login() {
+export default function Cadastro() {
   const { login } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
@@ -89,10 +89,10 @@ export default function Login() {
 
         <p className="login-form-title">Bem-vindo de volta</p>
         <p className="login-form-sub">Entre com suas credenciais para continuar</p>
-        <p>
-          Ainda não tem cadastro?{' '}
-          <span className='cursor-pointer text-blue-200' onClick={() => navigate('/cadastro')}>
-            Cadastre-se
+        <p className="login-form-sub">
+          Já tem Login{' '}
+          <span className='cursor-pointer text-blue-200' onClick={() => navigate('/login')}>
+            Entrar
           </span>
         </p>
 
