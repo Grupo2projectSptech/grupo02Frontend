@@ -4,7 +4,6 @@ import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle } from 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
-import Cadastro from './Cadastro';
 import "../app.css";
 import "../index.css";
 
@@ -81,7 +80,7 @@ export default function Login() {
 
       {/* Right panel */}
       <div className="login-right">
-        <div style={{ position: 'absolute', top: 20, right: 20 }}>
+        <div style={{ position: 'absolute', top: 20, right:  45}}>
           <button className="theme-toggle" onClick={toggle} title="Alternar tema">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -89,7 +88,7 @@ export default function Login() {
 
         <p className="login-form-title">Bem-vindo de volta</p>
         <p className="login-form-sub">Entre com suas credenciais para continuar</p>
-        <p>
+        <p className='login-form-sub'>
           Ainda não tem cadastro?{' '}
           <span className='cursor-pointer text-blue-200' onClick={() => navigate('/cadastro')}>
             Cadastre-se
@@ -103,12 +102,12 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate className=''>
           <div className="login-input-wrap">
             <User size={16} className="login-input-ico" />
             <input
               className={`login-input${errors.username ? ' error' : ''}`}
-              placeholder="Nome de usuário"
+              placeholder="Nome de usuário" 
               value={form.username}
               onChange={e => set('username', e.target.value)}
               autoComplete="username"

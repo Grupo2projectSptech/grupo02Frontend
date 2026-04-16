@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle } from 'lucide-react';
+import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle, icons } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
-import Login from './Login';
+import icone from '../assets/images/icone_outlet.png';
 import "../app.css";
 import "../index.css";
 
@@ -22,7 +22,6 @@ export default function Cadastro() {
   const [form, setForm] = useState({ username: '', password: '' });
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const set = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -53,11 +52,101 @@ export default function Cadastro() {
   };
 
   return (
-    <div className="login-page">
-      {/* Left panel */}
-      <div className="login-left">
-        <div className="login-brand">
-          <div className="login-brand-icon">🛍️</div>
+    <div className="cadastro-page">
+
+      {/* cadastro lateral */}
+      <div className='cadastro-right'>
+        <div style={{
+          position: 'absolute',
+          top: 20,
+          left: 45
+        }}>
+          <button className='theme-toggle' onClick={toggle} title='Alternar tema'>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
+
+        <p className="login-form-title">Bem-vindo, novo aqui?</p>
+        <p className="login-form-sub">Faça o cadastro para aproveitar o máximo do site</p>
+        <p className='login-form-sub'>
+          Já tem cadastro?{' '}
+          <span className='cursor-pointer text-blue-200' onClick={() => navigate('/login')}>
+            Entrar
+          </span>
+        </p>
+
+        {authError && (
+          <div className="alert alert-error">
+            <AlertCircle size={16} />
+            {authError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate >
+          <div className='cadastro-input-wrap'>
+            <User size={16} className="cadastro-input-ico" />
+            <input
+              className={`cadastro-input${errors.username ? ' error' : ''}`}
+              placeholder="Nome de usuário"
+              value={form.username}
+              onChange={e => set('username', e.target.value)}
+              autoComplete="username"
+            />
+            {errors.username && <div className="field-error" style={{ marginTop: 4 }}>{errors.username}</div>}
+          </div>
+
+          <div className='cadastro-input-wrap'>
+            <User size={16} className="cadastro-input-ico" />
+            <input
+              className={`cadastro-input${errors.password ? ' error' : ''}`}
+              type="email"
+              placeholder='E-mail'
+              value={form.email}
+              onChange={e => set('email', e.target.value)}
+              autoComplete='email'
+            />
+            {errors.email && <div className="field-error" style={{ marginTop: 4 }}>{errors.email}</div>}
+          </div>
+
+          <div className='cadastro-input-wrap'>
+            <Lock size={16} className="cadastro-input-ico" />
+            <input
+              className={`cadastro-input${errors.password ? ' error' : ''}`}
+              type="password"
+              placeholder="Senha"
+              value={form.password}
+              onChange={e => set('password', e.target.value)}
+              autoComplete="current-password"
+            />
+            {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}
+          </div>
+
+          <div className='cadastro-input-wrap'>
+            <Lock size={16} className="cadastro-input-ico" />
+            <input
+              className={`cadastro-input${errors.password ? ' error' : ''}`}
+              type="password"
+              placeholder="Senha"
+              value={form.password}
+              onChange={e => set('password', e.target.value)}
+              autoComplete="current-password"
+            />
+            {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}
+          </div>
+
+          <button className='cadastro-btn'>
+            Cadastro
+          </button>
+
+        </form>
+
+      </div>
+
+      <div className="cadastro-left">
+        <div className='cadastro-brand'>
+          <div className='cadastro-brand-icon' >
+            <img src={icone} alt='Logo Outlet' />
+          </div>
           <div>
             <h1>Outlet<br />
               <span>Party</span>
@@ -79,66 +168,6 @@ export default function Cadastro() {
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="login-right">
-        <div style={{ position: 'absolute', top: 20, right: 20 }}>
-          <button className="theme-toggle" onClick={toggle} title="Alternar tema">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-        </div>
-
-        <p className="login-form-title">Bem-vindo de volta</p>
-        <p className="login-form-sub">Entre com suas credenciais para continuar</p>
-        <p className="login-form-sub">
-          Já tem Login{' '}
-          <span className='cursor-pointer text-blue-200' onClick={() => navigate('/login')}>
-            Entrar
-          </span>
-        </p>
-
-        {authError && (
-          <div className="alert alert-error">
-            <AlertCircle size={16} />
-            {authError}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="login-input-wrap">
-            <User size={16} className="login-input-ico" />
-            <input
-              className={`login-input${errors.username ? ' error' : ''}`}
-              placeholder="Nome de usuário"
-              value={form.username}
-              onChange={e => set('username', e.target.value)}
-              autoComplete="username"
-            />
-            {errors.username && <div className="field-error" style={{ marginTop: 4 }}>{errors.username}</div>}
-          </div>
-
-          <div className="login-input-wrap">
-            <Lock size={16} className="login-input-ico" />
-            <input
-              className={`login-input${errors.password ? ' error' : ''}`}
-              type="password"
-              placeholder="Senha"
-              value={form.password}
-              onChange={e => set('password', e.target.value)}
-              autoComplete="current-password"
-            />
-            {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}
-          </div>
-
-          <button className="login-btn" type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : 'Entrar →'}
-          </button>
-        </form>
-
-        <div className="login-hint">
-          <strong>Credenciais de teste:</strong><br />
-          admin / admin123 &nbsp;·&nbsp; gerente / gerente123
-        </div>
-      </div>
     </div>
   );
 }
