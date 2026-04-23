@@ -4,24 +4,21 @@ import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle, icons 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
+import { userService } from '../services/api';
 import icone from '../assets/images/icone_outlet.png';
 import "../app.css";
 import "../index.css";
 
-// Simulated user store — in a real app this comes from backend
-const USERS = [
-  { id: 1, username: 'admin', password: 'admin123', name: 'Administrador', role: 'Admin' },
-  { id: 2, username: 'gerente', password: 'gerente123', name: 'Gerente Geral', role: 'Gerente' },
-];
 
 export default function Cadastro() {
   const { login } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
+  const [cadastro, setCadastro] = useState(false);
 
   const set = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -29,26 +26,44 @@ export default function Cadastro() {
     setAuthError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     const errs = {};
     const usrErr = validators.required(form.username, 'Usuário');
     const pwdErr = validators.password(form.password);
-    if (usrErr) errs.username = usrErr;
-    if (pwdErr) errs.password = pwdErr;
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    const emlErr = validators.email(form.email);
 
-    setLoading(true);
-    setTimeout(() => {
-      const user = USERS.find(u => u.username === form.username && u.password === form.password);
-      if (user) {
-        login({ id: user.id, name: user.name, username: user.username, role: user.role });
-        navigate('/');
-      } else {
-        setAuthError('Usuário ou senha incorretos');
-      }
-      setLoading(false);
-    }, 600);
+    if (usrErr) errs.username = usrErr;
+    if (emlErr) errs.email = emlErr;
+    if (pwdErr) errs.password = pwdErr;
+
+    if (form.password !== form.confirmPassword) {
+      errs.confirmPassword = 'As senhas não coincidem';
+    }
+
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
+
+    try {
+      setCadastro(true);
+
+      await userService.cadastro({
+        username: form.username,
+        email: form.email,
+        password: form.password
+      });
+
+      navigate('/login');
+
+    } catch (error) {
+      setAuthError(error.message || 'Erro ao cadastrar');
+
+    } finally {
+      setCadastro(false);
+    }
   };
 
   return (
@@ -98,7 +113,7 @@ export default function Cadastro() {
           <div className='cadastro-input-wrap'>
             <User size={16} className="cadastro-input-ico" />
             <input
-              className={`cadastro-input${errors.password ? ' error' : ''}`}
+              className={`cadastro-input${errors.email ? ' error' : ''}`}
               type="email"
               placeholder='E-mail'
               value={form.email}
@@ -126,9 +141,9 @@ export default function Cadastro() {
             <input
               className={`cadastro-input${errors.password ? ' error' : ''}`}
               type="password"
-              placeholder="Senha"
-              value={form.password}
-              onChange={e => set('password', e.target.value)}
+              placeholder="Confirmar Senha"
+              value={form.confirmPassword}
+              onChange={e => set('confirmPassword', e.target.value)}
               autoComplete="current-password"
             />
             {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}

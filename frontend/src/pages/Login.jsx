@@ -1,17 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
+import { userService } from '../services/api';;
+import icone from '../assets/images/icone_outlet.png';
 import "../app.css";
 import "../index.css";
 
-// Simulated user store — in a real app this comes from backend
-const USERS = [
-  { id: 1, username: 'admin', password: 'admin123', name: 'Administrador', role: 'Admin' },
-  { id: 2, username: 'gerente', password: 'gerente123', name: 'Gerente Geral', role: 'Gerente' },
-];
 
 export default function Login() {
   const { login } = useAuth();
@@ -29,34 +26,60 @@ export default function Login() {
     setAuthError('');
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const errs = {};
-    const usrErr = validators.required(form.username, 'Usuário');
-    const pwdErr = validators.password(form.password);
-    if (usrErr) errs.username = usrErr;
-    if (pwdErr) errs.password = pwdErr;
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
+  const errs = {};
+  const usrErr = validators.required(form.username, 'Usuário');
+  const pwdErr = validators.password(form.password);
+
+  if (usrErr) errs.username = usrErr;
+  if (pwdErr) errs.password = pwdErr;
+
+  if (Object.keys(errs).length) {
+    setErrors(errs);
+    return;
+  }
+
+  try {
     setLoading(true);
-    setTimeout(() => {
-      const user = USERS.find(u => u.username === form.username && u.password === form.password);
-      if (user) {
-        login({ id: user.id, name: user.name, username: user.username, role: user.role });
-        navigate('/');
-      } else {
-        setAuthError('Usuário ou senha incorretos');
-      }
-      setLoading(false);
-    }, 600);
-  };
+
+    const response = await userService.login({
+      username: form.username,
+      password: form.password
+    });
+
+    const user = response.data;
+
+    if (user.token) {
+      localStorage.setItem('token', user.token);
+    }
+
+    login({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role
+    });
+
+    navigate('/');
+
+  } catch (error) {
+    setAuthError(error.message || 'Erro ao fazer login');
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-page">
       {/* Left panel */}
       <div className="login-left">
         <div className="login-brand">
-          <div className="login-brand-icon">🛍️</div>
+          <div className="login-brand-icon">
+            <img src={icone} alt='Logo Outlet' />
+          </div>
           <div>
             <h1>Outlet<br />
               <span>Party</span>
@@ -80,7 +103,7 @@ export default function Login() {
 
       {/* Right panel */}
       <div className="login-right">
-        <div style={{ position: 'absolute', top: 20, right:  45}}>
+        <div style={{ position: 'absolute', top: 20, right: 45 }}>
           <button className="theme-toggle" onClick={toggle} title="Alternar tema">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -107,7 +130,7 @@ export default function Login() {
             <User size={16} className="login-input-ico" />
             <input
               className={`login-input${errors.username ? ' error' : ''}`}
-              placeholder="Nome de usuário" 
+              placeholder="Nome de usuário"
               value={form.username}
               onChange={e => set('username', e.target.value)}
               autoComplete="username"
