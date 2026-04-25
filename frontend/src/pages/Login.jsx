@@ -57,7 +57,8 @@ export default function Login() {
       {/* Left panel */}
       <div className="login-left">
         <div className="login-brand">
-          <div className="login-brand-icon">🛍️</div>
+          <div className="login-brand-icon">
+          </div>
           <div>
             <h1>Outlet<br />
               <span>Party</span>
