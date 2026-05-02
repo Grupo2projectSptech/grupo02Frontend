@@ -5,70 +5,80 @@
 
 /* ── Dark Theme (default) ───────────────────────────────────────────────────── */
 :root, [data-theme="dark"] {
-  --bg:          #0b0c10;
-  --bg2:         #13141a;
-  --bg3:         #1c1d26;
-  --bg4:         #242533;
-  --border:      #2e2f42;
-  --border2:     #3a3b52;
+  /* Backgrounds — escuros neutros para não competir com a paleta */
+  --bg:          #0b0e12;
+  --bg2:         #0f1318;
+  --bg3:         #161b22;
+  --bg4:         #1e2530;
+  --border:      #1e3a4a;
+  --border2:     #255266;
 
-  --primary:     #ff6b35;
-  --primary-dim: rgba(255,107,53,0.12);
-  --primary-glow:rgba(255,107,53,0.25);
+  /* Primary — azul petróleo da paleta (#00537A clareado para contraste) */
+  --primary:     #1a7fa8;
+  --primary-dim: rgba(26,127,168,0.14);
+  --primary-glow:rgba(26,127,168,0.28);
 
-  --accent:      #f7c948;
-  --accent-dim:  rgba(247,201,72,0.12);
+  /* Accent — amarelo dourado da paleta */
+  --accent:      #FFBA42;
+  --accent-dim:  rgba(255,186,66,0.13);
 
-  --text:        #f0eef8;
-  --text2:       #a09db8;
-  --text3:       #6a6882;
+  /* Textos */
+  --text:        #e8edf2;
+  --text2:       #8fa8b8;
+  --text3:       #4e6878;
 
-  --success:     #36d68c;
-  --success-dim: rgba(54,214,140,0.12);
-  --danger:      #ff5c72;
-  --danger-dim:  rgba(255,92,114,0.12);
-  --warning:     #f7c948;
-  --warning-dim: rgba(247,201,72,0.12);
-  --info:        #5ba4f5;
-  --info-dim:    rgba(91,164,245,0.12);
+  /* Semânticas */
+  --success:     #2ec98a;
+  --success-dim: rgba(46,201,138,0.12);
+  --danger:      #f05365;
+  --danger-dim:  rgba(240,83,101,0.12);
+  --warning:     #FFBA42;
+  --warning-dim: rgba(255,186,66,0.13);
+  --info:        #A8E8F9;
+  --info-dim:    rgba(168,232,249,0.12);
 
-  --shadow:      0 4px 24px rgba(0,0,0,0.5);
-  --shadow-sm:   0 2px 8px rgba(0,0,0,0.35);
+  --shadow:      0 4px 24px rgba(0,0,0,0.55);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.38);
   --radius:      12px;
   --sidebar-w:   180px;
 }
 
 /* ── Light Theme ────────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg:          #f4f3f8;
+  /* Backgrounds — branco/cinza claro com fundo sidebar azul escuro */
+  --bg:          #f2f5f7;
   --bg2:         #14213D;
-  --bg3:         #eeecf6;
-  --bg4:         #e5e3f0;
-  --border:      #dddbe8;
-  --border2:     #cbc9da;
+  --bg3:         #e8edf2;
+  --bg4:         #dde3ea;
+  --border:      #c8d4dc;
+  --border2:     #b0bfca;
 
+  /* Primary — amarelo/âmbar da paleta Outlet Party */
   --primary:     #FCA311;
-  --primary-dim: rgba(232,93,32,0.1);
-  --primary-glow:rgba(232,93,32,0.2);
+  --primary-dim: rgba(252,163,17,0.13);
+  --primary-glow:rgba(252,163,17,0.28);
 
-  --accent:      #d4a800;
-  --accent-dim:  rgba(212,168,0,0.1);
+  /* Accent — azul médio da paleta */
+  --accent:      #00537A;
+  --accent-dim:  rgba(0,83,122,0.1);
 
-  --text:        #fff;
-  --text2:       #14213D;
-  --text3:       #9e9bb5;
+  /* Textos — escuros para legibilidade no fundo claro */
+  --text:        #f7f9fa;
+  --text2:       #2d4a5e;
+  --text3:       #7a99aa;
 
-  --success:     #22a96e;
-  --success-dim: rgba(34,169,110,0.1);
-  --danger:      #e8334a;
-  --danger-dim:  rgba(232,51,74,0.1);
+  /* Semânticas */
+  --success:     #1a9e68;
+  --success-dim: rgba(26,158,104,0.1);
+  --danger:      #d42b40;
+  --danger-dim:  rgba(212,43,64,0.1);
   --warning:     #c98b00;
   --warning-dim: rgba(201,139,0,0.1);
-  --info:        #3b7de8;
-  --info-dim:    rgba(59,125,232,0.1);
+  --info:        #00537A;
+  --info-dim:    rgba(0,83,122,0.1);
 
   --shadow:      0 4px 24px rgba(0,0,0,0.08);
-  --shadow-sm:   0 2px 8px rgba(0,0,0,0.06);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.05);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────────── */
@@ -332,7 +342,7 @@ a { color: inherit; text-decoration: none; }
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text2);
   margin-bottom: 18px;
 }
 

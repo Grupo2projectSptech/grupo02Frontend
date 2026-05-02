@@ -218,9 +218,9 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
           >
-            <option value="estoque">Ranking: Maior estoque</option>
-            <option value="preco">Ranking: Maior preço</option>
-            <option value="nome">Ranking: Nome A-Z</option>
+            <option value="estoque">Maior estoque</option>
+            <option value="preco">Maior preço</option>
+            <option value="nome">Nome A-Z</option>
           </select>
 
           <button
