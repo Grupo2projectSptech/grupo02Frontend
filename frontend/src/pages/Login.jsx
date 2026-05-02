@@ -78,7 +78,6 @@ const handleSubmit = async (e) => {
       <div className="login-left">
         <div className="login-brand">
           <div className="login-brand-icon">
-            <img src={icone} alt='Logo Outlet' />
           </div>
           <div>
             <h1>Outlet<br />
