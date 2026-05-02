@@ -803,10 +803,5 @@ tbody tr:hover td { background: var(--bg3); }
   margin-bottom: 16px;
 }
 .alert-error   { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,92,114,0.25); }
-<<<<<<< HEAD
-.alert-success { background: var(--success-dim); color: var(--success); }
-=======
 .alert-success { background: var(--success-dim); color: var(--success); }
 
-
->>>>>>> b2e3e88024fe98520747265c670d8c1271737589
