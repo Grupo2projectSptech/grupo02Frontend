@@ -604,15 +604,15 @@ tbody tr:hover td { background: var(--bg3); }
   flex-shrink: 0;
 }
 
-.login-form-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-.login-form-sub   { font-size: 13.5px; color: var(--text2); margin-bottom: 28px; }
+.login-form-title { font-size: 22px; color: var(--text3) ;font-weight: 800; margin-bottom: 6px; }
+.login-form-sub   { font-size: 13.5px; color: var(--text3); margin-bottom: 28px; }
 
 .login-input-wrap { position: relative; margin-bottom: 14px; }
 .login-input-ico {
   position: absolute;
   left: 13px; top: 50%;
   transform: translateY(-50%);
-  color: var(--text3);
+  color: var(--text);
 }
 .login-input {
   width: 100%;
@@ -653,10 +653,126 @@ tbody tr:hover td { background: var(--bg3); }
   background: var(--bg3);
   border-radius: 8px;
   font-size: 12.5px;
-  color: var(--text3);
+  color: var(--text);
   border: 1px solid var(--border);
 }
 .login-hint strong { color: var(--text2); }
+
+
+/* ── cadastro page ─────────────────────────────────────────────────────────────── */
+.cadastro-page {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg);
+}
+
+.cadastro-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.cadastro-right {
+  width: 480px;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px 48px;
+}
+
+.cadastro-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 400px;
+}
+.cadastro-brand-icon {
+  width: 64px; height: 64px;
+  background: var(--primary);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 8px 32px var(--primary-glow);
+}
+.cadastro-brand h1 {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.cadastro-brand h1 span { color: var(--primary); }
+.cadastro-brand p { font-size: 15px; color: var(--text2); line-height: 1.6; }
+
+.cadastro-features { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.cadastro-feature {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 14px; color: var(--text2);
+}
+.cadastro-feature-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.cadastro-form-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+.cadastro-form-sub   { font-size: 13.5px; color: var(--text2); margin-bottom: 28px; }
+
+.cadastro-input-wrap { position: relative; margin-bottom: 14px;}
+.cadastro-input-ico {
+  position: absolute;
+  left: 13px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text);
+}
+.cadastro-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  padding: 12px 13px 12px 40px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.cadastro-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+.cadastro-input.error { border-color: var(--danger); }
+
+.cadastro-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: filter 0.18s, transform 0.18s;
+  box-shadow: 0 4px 20px var(--primary-glow);
+}
+.cadastro-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.cadastro-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.cadastro-hint {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: var(--bg3);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text3);
+  border: 1px solid var(--border);
+}
+.cadastro-hint strong { color: var(--text2); }
 
 /* ── Progress bar ───────────────────────────────────────────────────────────── */
 .progress-bar-wrap { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; }
@@ -687,4 +803,10 @@ tbody tr:hover td { background: var(--bg3); }
   margin-bottom: 16px;
 }
 .alert-error   { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,92,114,0.25); }
+<<<<<<< HEAD
 .alert-success { background: var(--success-dim); color: var(--success); }
+=======
+.alert-success { background: var(--success-dim); color: var(--success); }
+
+
+>>>>>>> b2e3e88024fe98520747265c670d8c1271737589

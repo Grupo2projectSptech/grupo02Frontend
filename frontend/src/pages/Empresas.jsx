@@ -8,12 +8,12 @@ import toast from 'react-hot-toast';
 
 const SCHEMA = {
   razaoSocial: [v => validators.required(v, 'Razão Social'), v => validators.minLength(v, 3, 'Razão Social')],
-  cnpj:        [v => validators.cnpj(v)],
-  email:       [v => validators.email(v)],
+  cnpj: [v => validators.cnpj(v)],
+  email: [v => validators.email(v)],
 };
 
 const EMPTY = { razaoSocial: '', cnpj: '', nomeFantasia: '', email: '', telefone: '', endereco: '', cidade: '', estado: '', cep: '', segmento: '', ativo: true };
-const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 export default function Empresas() {
   const [items, setItems] = useState([]);
@@ -27,12 +27,15 @@ export default function Empresas() {
 
   const load = () => {
     setLoading(true);
-    empresaService.getAll().then(r => setItems(r.data)).catch(() => toast.error('Erro ao carregar')).finally(() => setLoading(false));
+    empresaService.getAll()
+      .then(r => setItems(r.data))
+      .catch(() => toast.error('Erro ao carregar'))
+      .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setErrors({}); setModal(true); };
-  const openEdit   = (item) => { setEditing(item); setForm({ ...item }); setErrors({}); setModal(true); };
+  const openEdit = (item) => { setEditing(item); setForm({ ...item }); setErrors({}); setModal(true); };
   const closeModal = () => { setModal(false); setEditing(null); };
 
   const setField = (k, v) => {
@@ -47,7 +50,7 @@ export default function Empresas() {
     setSaving(true);
     try {
       if (editing) { await empresaService.update(editing.id, form); toast.success('Empresa atualizada!'); }
-      else         { await empresaService.create(form);              toast.success('Empresa cadastrada!'); }
+      else { await empresaService.create(form); toast.success('Empresa cadastrada!'); }
       closeModal(); load();
     } catch (err) { toast.error(err.message); }
     finally { setSaving(false); }
@@ -76,7 +79,7 @@ export default function Empresas() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div className="search-wrap">
-            <svg className="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <svg className="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input className="search-input" placeholder="Buscar empresa…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>{filtered.length} resultado(s)</div>

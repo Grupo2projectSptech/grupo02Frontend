@@ -13,6 +13,13 @@ api.interceptors.response.use(
   }
 );
 
+export const userService = {
+  login: (credentials) => api.post('/auth/login', credentials),
+  cadastro: (data) => api.post('/auth/register', data),
+  getProfile: () => api.get('/auth/profile'),
+  logout: () => api.post('/auth/logout'),
+};
+
 export const empresaService = {
   getAll: () => api.get('/empresas'),
   getById: (id) => api.get(`/empresas/${id}`),
