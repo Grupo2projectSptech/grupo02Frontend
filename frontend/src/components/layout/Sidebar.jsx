@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import logo_outlet from '../../assets/images/logo_outlet.png';
 const links = [
   { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true },
-  { to: '/empresas',    label: 'Empresas',     icon: Building2 },
+  { to: '/vendas',    label: 'Vendas  ',     icon: Building2 },
   { to: '/fornecedores',label: 'Fornecedores', icon: Truck },
   { to: '/produtos',    label: 'Produtos',     icon: Package },
 ];
