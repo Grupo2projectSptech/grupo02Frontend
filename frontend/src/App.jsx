@@ -9,6 +9,7 @@ import Empresas from './pages/Empresas';
 import Fornecedores from './pages/Fornecedores';
 import Produtos from './pages/Produtos';
 import Cadastro from './pages/Cadastro';
+import Vendas from './pages/Vendas';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/fornecedores" element={<PrivateRoute><AppLayout><Fornecedores /></AppLayout></PrivateRoute>} />
       <Route path="/produtos" element={<PrivateRoute><AppLayout><Produtos /></AppLayout></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path='/vendas' element={<PrivateRoute><AppLayout><Vendas/></AppLayout></PrivateRoute>} />
     </Routes>
   );
 }
