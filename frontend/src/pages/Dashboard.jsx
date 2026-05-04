@@ -104,7 +104,7 @@ export default function Dashboard() {
               <div>
                 <div className="stat-value" style={{ fontSize: typeof value === 'string' ? 22 : 34 }}>{value}</div>
                 <div className="stat-label">{label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{sub}</div>
+                <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6 }}>{sub}</div>
               </div>
               <div className="stat-icon-wrap" style={{ background: dim, color }}>
                 <Icon size={20} />
@@ -121,7 +121,7 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-title">📦 Estoque por Produto</div>
           {stockBars.length === 0 ? (
-            <div className="empty" style={{ padding: 20 }}><p>Nenhum produto cadastrado</p></div>
+            <div className="empty" style={{ padding: 20 }}><p style={{color: "Black"}}>Nenhum produto cadastrado</p></div>
           ) : (
             <div className="bar-chart">
               {stockBars.map((b, i) => (
