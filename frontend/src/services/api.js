@@ -30,24 +30,21 @@ api.interceptors.response.use(
 // 👤 USER SERVICE
 // =======================
 export const userService = {
-  // 🔐 Login via JSON Server
+  // 🔐 Login via Spring Boot Auth API
   login: async (credentials) => {
-    const response = await api.get(
-      `/users?email=${credentials.email}&password=${credentials.password}`
-    );
+    const response = await api.post('/api/auth/login', {
+      username: credentials.email || credentials.username,
+      password: credentials.password,
+    });
 
-    if (response.data.length === 0) {
-      throw new Error('Email ou senha inválidos');
-    }
-
-    return response.data[0]; // retorna usuário direto
+    return response.data;
   },
 
-  cadastro: (data) => api.post('/users', data),
+  cadastro: (data) => api.post('/api/auth/register', data),
 
-  getProfile: (id) => api.get(`/users/${id}`),
+  getProfile: () => api.get('/api/auth/profile'),
 
-  logout: () => Promise.resolve(),
+  logout: () => api.post('/api/auth/logout'),
 
   delete: (id) => api.delete(`/users/${id}`),
 
@@ -58,53 +55,53 @@ export const userService = {
 // 🏢 EMPRESA SERVICE
 // =======================
 export const empresaService = {
-  getAll: () => api.get('/empresas'),
+  getAll: () => api.get('/api/empresas'),
 
-  getById: (id) => api.get(`/empresas/${id}`),
+  getById: (id) => api.get(`/api/empresas/${id}`),
 
-  create: (data) => api.post('/empresas', data),
+  create: (data) => api.post('/api/empresas', data),
 
-  update: (id, data) => api.put(`/empresas/${id}`, data),
+  update: (id, data) => api.put(`/api/empresas/${id}`, data),
 
-  delete: (id) => api.delete(`/empresas/${id}`),
+  delete: (id) => api.delete(`/api/empresas/${id}`),
 };
 
 // =======================
 // 🚚 FORNECEDOR SERVICE
 // =======================
 export const fornecedorService = {
-  getAll: () => api.get('/fornecedores'),
+  getAll: () => api.get('/api/fornecedores'),
 
-  getAtivos: () => api.get('/fornecedores?ativo=true'),
+  getAtivos: () => api.get('/api/fornecedores/ativos'),
 
-  getById: (id) => api.get(`/fornecedores/${id}`),
+  getById: (id) => api.get(`/api/fornecedores/${id}`),
 
-  create: (data) => api.post('/fornecedores', data),
+  create: (data) => api.post('/api/fornecedores', data),
 
-  update: (id, data) => api.put(`/fornecedores/${id}`, data),
+  update: (id, data) => api.put(`/api/fornecedores/${id}`, data),
 
-  delete: (id) => api.delete(`/fornecedores/${id}`),
+  delete: (id) => api.delete(`/api/fornecedores/${id}`),
 };
 
 // =======================
 // 📦 PRODUTO SERVICE
 // =======================
 export const produtoService = {
-  getAll: () => api.get('/produtos'),
+  getAll: () => api.get('/api/produtos'),
 
-  getById: (id) => api.get(`/produtos/${id}`),
+  getById: (id) => api.get(`/api/produtos/${id}`),
 
   getByFornecedor: (id) =>
-    api.get(`/produtos?fornecedorId=${id}`),
+    api.get(`/api/produtos/fornecedor/${id}`),
 
   getByEmpresa: (id) =>
-    api.get(`/produtos?empresaId=${id}`),
+    api.get(`/api/produtos/empresa/${id}`),
 
-  create: (data) => api.post('/produtos', data),
+  create: (data) => api.post('/api/produtos', data),
 
-  update: (id, data) => api.put(`/produtos/${id}`, data),
+  update: (id, data) => api.put(`/api/produtos/${id}`, data),
 
-  delete: (id) => api.delete(`/produtos/${id}`),
+  delete: (id) => api.delete(`/api/produtos/${id}`),
 };
 
 export default api;
