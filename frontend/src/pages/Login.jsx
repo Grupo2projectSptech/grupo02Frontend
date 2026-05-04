@@ -78,6 +78,7 @@ const handleSubmit = async (e) => {
       <div className="login-left">
         <div className="login-brand">
           <div className="login-brand-icon">
+            <img src={icone} alt="Logo Outlet Party" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div>
             <h1>Outlet<br />

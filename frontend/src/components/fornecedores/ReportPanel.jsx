@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { BarChart2, TrendingUp, Package, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import MiniBar from './MiniBar';
+import icone from '../../assets/images/icone_outlet.png';
 
 // Paleta alinhada à paleta do projeto (primary, info, success, warning, accent)
 const COLORS = [
@@ -16,12 +17,16 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
   const reportRef = useRef(null);
   const [filterForn, setFilterForn] = useState('');
   const [sortBy, setSortBy] = useState('estoque');
+  const [reportMode, setReportMode] = useState('fornecedor');
 
   const now = new Date().toLocaleString('pt-BR');
 
-  // ── Dados por fornecedor ────────────────────────────────────────────────────
+  const filteredProducts = filterForn
+    ? allProdutos.filter(p => p.fornecedor?.id === parseInt(filterForn))
+    : allProdutos;
+
   const rows = fornecedores.map(f => {
-    const prods = allProdutos.filter(
+    const prods = filteredProducts.filter(
       p => p.fornecedor?.id === f.id || p.fornecedor?.nome === f.nome
     );
     const totalEstoque = prods.reduce((a, p) => a + (p.estoque || 0), 0);
@@ -29,12 +34,26 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
     return { fornecedor: f, prods, totalEstoque, valorTotal };
   }).filter(r => r.prods.length > 0);
 
-  const filtered = filterForn
+  const filteredFornecedores = filterForn
     ? rows.filter(r => r.fornecedor.id === parseInt(filterForn))
     : rows;
 
-  // ── Top 10 produtos ordenados ───────────────────────────────────────────────
-  const allLinked = allProdutos
+  const categoryGroups = filteredProducts.reduce((acc, product) => {
+    const key = product.categoria?.trim() || 'Sem categoria';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(product);
+    return acc;
+  }, {});
+
+  const categories = Object.entries(categoryGroups)
+    .map(([categoria, prods]) => {
+      const totalEstoque = prods.reduce((a, p) => a + (p.estoque || 0), 0);
+      const valorTotal = prods.reduce((a, p) => a + ((p.estoque || 0) * parseFloat(p.preco || 0)), 0);
+      return { categoria, prods, totalEstoque, valorTotal };
+    })
+    .sort((a, b) => b.totalEstoque - a.totalEstoque);
+
+  const allLinked = filteredProducts
     .filter(p => p.fornecedor)
     .map(p => ({ ...p, fornNome: p.fornecedor?.nome || '—' }));
 
@@ -46,13 +65,16 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
 
   const maxEstoque = Math.max(...sorted.map(p => p.estoque || 0), 1);
 
-  // ── Impressão ───────────────────────────────────────────────────────────────
+  const reportTitle = reportMode === 'categoria'
+    ? 'Relatório de Produtos por Categoria'
+    : 'Relatório de Produtos por Fornecedor';
+
   const handlePrint = () => {
     const win = window.open('', '_blank');
     win.document.write(`
       <html>
         <head>
-          <title>Relatório de Fornecedores — Outlet Party</title>
+          <title>${reportTitle} — Outlet Party</title>
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
@@ -109,7 +131,7 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
         </head>
         <body>
           <div class="header">
-            <h1>🛍️ Outlet Party — Relatório de Fornecedores</h1>
+            <h1><img src="${icone}" alt="Outlet Party" style="height:24px;margin-right:8px;vertical-align:middle"> Outlet Party — ${reportTitle}</h1>
             <div class="sub">Emitido em ${now}</div>
           </div>
 
@@ -134,8 +156,37 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
             `;
           }).join('')}
 
-          <div class="section-title" style="margin-top:32px">Detalhamento por Fornecedor</div>
-          ${filtered.map(({ fornecedor, prods, totalEstoque, valorTotal }) => `
+          <div class="section-title" style="margin-top:32px">${reportMode === 'categoria' ? 'Detalhamento por Categoria' : 'Detalhamento por Fornecedor'}</div>
+          ${reportMode === 'categoria' ? categories.map(({ categoria, prods, totalEstoque, valorTotal }) => `
+            <div class="forn-header">
+              <strong>${categoria}</strong>
+              <span>${prods.length} produto(s) · Estoque: ${totalEstoque} · Valor: ${formatCurrency(valorTotal)}</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th><th>Fornecedor</th><th>Preço Unit.</th>
+                  <th>Estoque</th><th>Valor Total</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${prods.map(p => `
+                  <tr>
+                    <td><strong>${p.nome}</strong></td>
+                    <td>${p.fornecedor?.nome || '—'}</td>
+                    <td><strong>${formatCurrency(p.preco)}</strong></td>
+                    <td><strong>${p.estoque || 0} ${p.unidade || 'UN'}</strong></td>
+                    <td>${formatCurrency((p.estoque || 0) * parseFloat(p.preco || 0))}</td>
+                    <td>
+                      <span class="badge ${p.estoque === 0 ? 'badge-zero' : p.ativo ? 'badge-ok' : 'badge-warn'}">
+                        ${p.estoque === 0 ? 'Zerado' : p.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `).join('') : filteredFornecedores.map(({ fornecedor, prods, totalEstoque, valorTotal }) => `
             <div class="forn-header">
               <strong>${fornecedor.nome}</strong>
               <span>${prods.length} produto(s) · Estoque: ${totalEstoque} · Valor: ${formatCurrency(valorTotal)}</span>
@@ -190,7 +241,7 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
               fontFamily: 'Bricolage Grotesque, sans-serif',
               color: 'var(--text)',
             }}>
-              Relatório de Produtos por Fornecedor
+              {reportTitle}
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>
@@ -201,28 +252,38 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
         {/* Controles */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <select
-            className="form-select"
-            style={{ fontSize: 12.5, padding: '7px 10px', minWidth: 190 }}
-            value={filterForn}
-            onChange={e => setFilterForn(e.target.value)}
-          >
-            <option value="">Todos os fornecedores</option>
-            {fornecedores.map(f => (
-              <option key={f.id} value={f.id}>{f.nome}</option>
-            ))}
-          </select>
+              className="form-select"
+              style={{ fontSize: 12.5, padding: '7px 10px', minWidth: 190 }}
+              value={filterForn}
+              onChange={e => setFilterForn(e.target.value)}
+            >
+              <option value="">Todos os fornecedores</option>
+              {fornecedores.map(f => (
+                <option key={f.id} value={f.id}>{f.nome}</option>
+              ))}
+            </select>
 
-          <select
-            className="form-select"
-            style={{ fontSize: 12.5, padding: '7px 10px' }}
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-          >
-            <option value="estoque">Maior estoque</option>
-            <option value="preco">Maior preço</option>
-            <option value="nome">Nome A-Z</option>
-          </select>
+            <select
+              className="form-select"
+              style={{ fontSize: 12.5, padding: '7px 10px', minWidth: 180 }}
+              value={reportMode}
+              onChange={e => setReportMode(e.target.value)}
+            >
+              <option value="fornecedor">Por Fornecedor</option>
+              <option value="categoria">Por Categoria</option>
+              <option value="vendas" disabled>Vendas (em breve)</option>
+            </select>
 
+            <select
+              className="form-select"
+              style={{ fontSize: 12.5, padding: '7px 10px' }}
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+            >
+              <option value="estoque">Maior estoque</option>
+              <option value="preco">Maior preço</option>
+              <option value="nome">Nome A-Z</option>
+            </select>
           <button
             className="btn btn-primary"
             style={{ fontSize: 12.5, gap: 6 }}
@@ -309,7 +370,7 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
       {/* Divisor */}
       <div style={{ borderTop: '1px solid var(--border)', margin: '20px 0' }} />
 
-      {/* ── Detalhamento por fornecedor ─────────────────────────────────────── */}
+      {/* ── Detalhamento por fornecedor / categoria ─────────────────────────────────────── */}
       <div style={{
         fontSize: 13, fontWeight: 700, marginBottom: 16,
         display: 'flex', alignItems: 'center', gap: 6,
@@ -317,15 +378,92 @@ export default function ReportPanel({ fornecedores, allProdutos }) {
         fontFamily: 'Bricolage Grotesque, sans-serif',
       }}>
         <Package size={14} color="var(--info)" />
-        Detalhamento por Fornecedor
+        {reportMode === 'categoria' ? 'Detalhamento por Categoria' : 'Detalhamento por Fornecedor'}
       </div>
 
-      {filtered.length === 0 ? (
+      {reportMode === 'vendas' ? (
+        <div style={{ color: 'var(--text3)', fontSize: 13 }}>
+          Relatórios de vendas serão ativados futuramente quando a funcionalidade estiver implementada.
+        </div>
+      ) : reportMode === 'categoria' ? (
+        categories.length === 0 ? (
+          <div style={{ color: 'var(--text3)', fontSize: 13 }}>
+            Nenhum produto disponível para o filtro selecionado.
+          </div>
+        ) : (
+          categories.map(({ categoria, prods, totalEstoque, valorTotal }) => (
+            <div key={categoria} style={{ marginBottom: 24 }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '9px 14px', borderRadius: 8,
+                background: 'var(--bg2)',
+                borderLeft: '3px solid var(--primary)',
+                marginBottom: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text)' }}>
+                    {categoria}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--text2)' }}>
+                  <span>{prods.length} produto(s)</span>
+                  <span>Estoque: <strong style={{ color: 'var(--text)' }}>{totalEstoque}</strong></span>
+                  <span>Valor: <strong style={{ color: 'var(--success)' }}>{formatCurrency(valorTotal)}</strong></span>
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produto</th>
+                      <th>Fornecedor</th>
+                      <th>Preço Unit.</th>
+                      <th>Estoque</th>
+                      <th>Valor Total</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prods.map(p => (
+                      <tr key={p.id}>
+                        <td style={{ fontWeight: 600, color: 'var(--text)' }}>{p.nome}</td>
+                        <td style={{ color: 'var(--text2)', fontSize: 12.5 }}>{p.fornecedor?.nome || '—'}</td>
+                        <td style={{ color: 'var(--success)', fontWeight: 700 }}>{formatCurrency(p.preco)}</td>
+                        <td>
+                          <span style={{
+                            fontWeight: 700,
+                            color: p.estoque === 0
+                              ? 'var(--danger)'
+                              : p.estoque <= 5
+                                ? 'var(--warning)'
+                                : 'var(--text)',
+                          }}>
+                            {p.estoque || 0} {p.unidade || 'UN'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--text2)' }}>
+                          {formatCurrency((p.estoque || 0) * parseFloat(p.preco || 0))}
+                        </td>
+                        <td>
+                          <span className={`badge ${p.ativo ? 'badge-active' : 'badge-inactive'}`}>
+                            {p.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
+        )
+      ) : filteredFornecedores.length === 0 ? (
         <div style={{ color: 'var(--text3)', fontSize: 13 }}>
           Nenhum dado disponível para o filtro selecionado.
         </div>
       ) : (
-        filtered.map(({ fornecedor, prods, totalEstoque, valorTotal }) => (
+        filteredFornecedores.map(({ fornecedor, prods, totalEstoque, valorTotal }) => (
           <div key={fornecedor.id} style={{ marginBottom: 24 }}>
             {/* Header do fornecedor */}
             <div style={{
