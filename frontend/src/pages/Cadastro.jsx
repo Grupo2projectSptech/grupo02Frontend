@@ -53,7 +53,8 @@ export default function Cadastro() {
       await userService.cadastro({
         username: form.username,
         email: form.email,
-        password: form.password
+        password: form.password,
+        role: 'admin' // ✅ ACRESCENTADO
       });
 
       navigate('/login');

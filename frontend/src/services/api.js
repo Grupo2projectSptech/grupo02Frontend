@@ -1,107 +1,133 @@
 import axios from 'axios';
+import { storage } from '../utils/storage';
 
 const api = axios.create({
   baseURL: 'http://localhost:8080',
   headers: { 'Content-Type': 'application/json' },
 });
 
+// 🔐 REQUEST
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = storage.getToken();
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
+// 🔁 RESPONSE (refresh automático)
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = storage.getRefreshToken();
+
+        if (refreshToken) {
+          const response = await axios.post(
+            'http://localhost:8080/api/auth/refresh',
+            { refreshToken }
+          );
+
+          const newToken = response.data.token;
+
+          storage.setToken(newToken);
+
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        }
+      } catch {
+        storage.clearAuth();
+        storage.removeToken();
+        storage.removeRefreshToken();
+
+        window.location.href = '/login';
+      }
+    }
+
     const message =
       error.response?.data?.message ||
       'Erro ao conectar com o servidor';
+
     return Promise.reject(new Error(message));
   }
 );
 
-// =======================
+
 // 👤 USER SERVICE
-// =======================
 export const userService = {
-  // 🔐 Login via Spring Boot Auth API
   login: async (credentials) => {
     const response = await api.post('/api/auth/login', {
       username: credentials.email || credentials.username,
       password: credentials.password,
     });
 
-    return response.data;
+    const { token, refreshToken, user } = response.data;
+
+    if (token) storage.setToken(token);
+    if (refreshToken) storage.setRefreshToken(refreshToken);
+
+    return { token, refreshToken, user };
   },
 
   cadastro: (data) => api.post('/api/auth/register', data),
-
   getProfile: () => api.get('/api/auth/profile'),
 
-  logout: () => api.post('/api/auth/logout'),
-
-  delete: (id) => api.delete(`/users/${id}`),
-
-  atualizar: (id, data) => api.put(`/users/${id}`, data),
+  logout: async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } finally {
+      storage.clearAuth();
+      storage.removeToken();
+      storage.removeRefreshToken();
+    }
+  },
 };
 
-// =======================
-// 🏢 EMPRESA SERVICE
-// =======================
+
+// 🏢 EMPRESAS
 export const empresaService = {
-  getAll: () => api.get('/api/empresas'),
-
-  getById: (id) => api.get(`/api/empresas/${id}`),
-
-  create: (data) => api.post('/api/empresas', data),
-
-  update: (id, data) => api.put(`/api/empresas/${id}`, data),
-
-  delete: (id) => api.delete(`/api/empresas/${id}`),
+  listar: () => api.get('/api/empresas'),
+  buscar: (id) => api.get(`/api/empresas/${id}`),
+  criar: (data) => api.post('/api/empresas', data),
+  atualizar: (id, data) => api.put(`/api/empresas/${id}`, data),
+  deletar: (id) => api.delete(`/api/empresas/${id}`),
 };
 
-// =======================
-// 🚚 FORNECEDOR SERVICE
-// =======================
+
+// 🚚 FORNECEDORES
 export const fornecedorService = {
-  getAll: () => api.get('/api/fornecedores'),
-
-  getAtivos: () => api.get('/api/fornecedores/ativos'),
-
-  getById: (id) => api.get(`/api/fornecedores/${id}`),
-
-  create: (data) => api.post('/api/fornecedores', data),
-
-  update: (id, data) => api.put(`/api/fornecedores/${id}`, data),
-
-  delete: (id) => api.delete(`/api/fornecedores/${id}`),
+  listar: () => api.get('/api/fornecedores'),
+  buscar: (id) => api.get(`/api/fornecedores/${id}`),
+  criar: (data) => api.post('/api/fornecedores', data),
+  atualizar: (id, data) => api.put(`/api/fornecedores/${id}`, data),
+  deletar: (id) => api.delete(`/api/fornecedores/${id}`),
 };
 
-// =======================
-// 📦 PRODUTO SERVICE
-// =======================
+
+// 📦 PRODUTOS
 export const produtoService = {
-  getAll: () => api.get('/api/produtos'),
-
-  getById: (id) => api.get(`/api/produtos/${id}`),
-
-  getByFornecedor: (id) =>
-    api.get(`/api/produtos/fornecedor/${id}`),
-
-  getByEmpresa: (id) =>
-    api.get(`/api/produtos/empresa/${id}`),
-
-  create: (data) => api.post('/api/produtos', data),
-
-  update: (id, data) => api.put(`/api/produtos/${id}`, data),
-
-  delete: (id) => api.delete(`/api/produtos/${id}`),
+  listar: () => api.get('/api/produtos'),
+  buscar: (id) => api.get(`/api/produtos/${id}`),
+  criar: (data) => api.post('/api/produtos', data),
+  atualizar: (id, data) => api.put(`/api/produtos/${id}`, data),
+  deletar: (id) => api.delete(`/api/produtos/${id}`),
 };
 
-export default api;
+
+// 💰 VENDAS
+export const vendaService = {
+  listar: () => api.get('/api/vendas'),
+  buscar: (id) => api.get(`/api/vendas/${id}`),
+  criar: (data) => api.post('/api/vendas', data),
+  cancelar: (id) => api.delete(`/api/vendas/${id}`),
+};

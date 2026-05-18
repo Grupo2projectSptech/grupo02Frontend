@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ acrescentei useEffect
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, BarChart2, Package, Truck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import "../app.css";
 import "../index.css";
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth(); // ✅ acrescentei isAuthenticated
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
@@ -18,6 +18,13 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ NOVO: REDIRECIONA SE JÁ ESTIVER LOGADO
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/');
+    }
+  }, []);
 
   const set = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -43,32 +50,23 @@ export default function Login() {
     try {
       setLoading(true);
 
-      // ✅ CORREÇÃO: agora recebe o usuário direto
-      const user = await userService.login({
+      const response = await userService.login({
         email: form.email,
         password: form.password
       });
 
-      // ✅ salva token vindo do JSON
-      if (user.token) {
-        localStorage.setItem('token', user.token);
-      }
+      login(response.user);
 
-      // ✅ salva usuário (boa prática)
-      localStorage.setItem('user', JSON.stringify(user));
-
-      // contexto global
-      login({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      });
+      // ✅ NOVO: LIMPA FORM (não altera visual)
+      setForm({ email: '', password: '' });
+      setErrors({});
+      setAuthError('');
 
       navigate('/');
 
     } catch (error) {
-      setAuthError(error.message || 'Erro ao fazer login');
+
+      setAuthError(error.message || 'Usuário ou senha inválidos');
 
     } finally {
       setLoading(false);
@@ -76,7 +74,7 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
+ <div className="login-page">
       {/* LEFT */}
       <div className="login-left">
         <div className="login-brand">
@@ -185,12 +183,6 @@ export default function Login() {
             {loading ? 'Entrando...' : 'Entrar →'}
           </button>
         </form>
-
-        <div className="login-hint">
-          <strong>Teste:</strong><br />
-          admin / admin123 <br />
-          gerente / gerente123
-        </div>
       </div>
     </div>
   );
