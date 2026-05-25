@@ -6,7 +6,7 @@ import { formatCNPJ, formatPhone } from '../utils/formatters';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
 import FornecedorRow from '../components/fornecedores/FornecedorRow';
-import ReportPanel   from '../components/fornecedores/ReportPanel';
+import ReportPanel from '../components/fornecedores/ReportPanel';
 
 const SCHEMA = {
   nome:  [v => validators.required(v, 'Nome'), v => validators.minLength(v, 2, 'Nome')],
@@ -39,11 +39,18 @@ export default function Fornecedores() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([fornecedorService.getAll(), produtoService.getAll()])
-      .then(([f, p]) => { setItems(f.data); setAllProdutos(p.data); })
+    Promise.all([
+      fornecedorService.listar(),  // ✅ corrigido de getAll()
+      produtoService.listar(),     // ✅ corrigido de getAll()
+    ])
+      .then(([f, p]) => {
+        setItems(f.data);
+        setAllProdutos(p.data);
+      })
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoading(false));
   };
+
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setErrors({}); setModal(true); };
@@ -62,28 +69,29 @@ export default function Fornecedores() {
     setSaving(true);
     try {
       if (editing) {
-        await fornecedorService.update(editing.id, form);
+        await fornecedorService.atualizar(editing.id, form); // ✅ corrigido de update()
         toast.success('Fornecedor atualizado!');
       } else {
-        await fornecedorService.create(form);
+        await fornecedorService.criar(form);                 // ✅ corrigido de create()
         toast.success('Fornecedor cadastrado!');
       }
-      closeModal(); load();
+      closeModal();
+      load();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Erro ao salvar fornecedor');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Excluir este fornecedor?')) return;
+    if (!window.confirm('Excluir este fornecedor?')) return; // ✅ window.confirm
     try {
-      await fornecedorService.delete(id);
+      await fornecedorService.deletar(id);                   // ✅ corrigido de delete()
       toast.success('Removido!');
       load();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Erro ao remover fornecedor');
     }
   };
 
@@ -145,8 +153,14 @@ export default function Fornecedores() {
             <table>
               <thead>
                 <tr>
-                  <th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th>
-                  <th>Categoria</th><th>Cidade / UF</th><th>Status</th><th>Ações</th>
+                  <th>Nome</th>
+                  <th>CNPJ</th>
+                  <th>Contato</th>
+                  <th>Telefone</th>
+                  <th>Categoria</th>
+                  <th>Cidade / UF</th>
+                  <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,8 +190,11 @@ export default function Fornecedores() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar Fornecedor' : 'Novo Fornecedor'}</h2>
-              <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
+              <button className="btn btn-ghost btn-icon" onClick={closeModal}>
+                <X size={16} />
+              </button>
             </div>
+
             <form onSubmit={handleSubmit} noValidate>
               <div className="form-row">
                 <div className="form-group">
@@ -200,6 +217,7 @@ export default function Fornecedores() {
                   />
                 </div>
               </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Contato</label>
@@ -222,6 +240,7 @@ export default function Fornecedores() {
                   {errors.email && <div className="field-error">{errors.email}</div>}
                 </div>
               </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Telefone</label>
@@ -242,6 +261,7 @@ export default function Fornecedores() {
                   />
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label">Endereço</label>
                 <input
@@ -251,19 +271,29 @@ export default function Fornecedores() {
                   placeholder="Endereço completo"
                 />
               </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Cidade</label>
-                  <input className="form-input" value={form.cidade} onChange={e => setField('cidade', e.target.value)} />
+                  <input
+                    className="form-input"
+                    value={form.cidade}
+                    onChange={e => setField('cidade', e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Estado</label>
-                  <select className="form-select" value={form.estado} onChange={e => setField('estado', e.target.value)}>
+                  <select
+                    className="form-select"
+                    value={form.estado}
+                    onChange={e => setField('estado', e.target.value)}
+                  >
                     <option value="">—</option>
                     {UFS.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label">Status</label>
                 <select
@@ -275,8 +305,11 @@ export default function Fornecedores() {
                   <option value="false">Inativo</option>
                 </select>
               </div>
+
               <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
+                <button type="button" className="btn btn-ghost" onClick={closeModal}>
+                  Cancelar
+                </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Salvando…' : editing ? 'Salvar Alterações' : 'Cadastrar'}
                 </button>

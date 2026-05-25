@@ -10,7 +10,7 @@ import "../app.css";
 import "../index.css";
 
 export default function Login() {
-  const { login, isAuthenticated } = useAuth(); // ✅ acrescentei isAuthenticated
+  const { login, isAuthenticated } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
@@ -19,10 +19,9 @@ export default function Login() {
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ NOVO: REDIRECIONA SE JÁ ESTIVER LOGADO
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, []);
 
@@ -32,47 +31,43 @@ export default function Login() {
     setAuthError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const errs = {};
-    const usrErr = validators.required(form.email, 'Usuário');
-    const pwdErr = validators.password(form.password);
+  const errs = {};
+  const usrErr = validators.required(form.email, 'Usuário');
+  const pwdErr = validators.password(form.password);
 
-    if (usrErr) errs.email = usrErr;
-    if (pwdErr) errs.password = pwdErr;
+  if (usrErr) errs.email = usrErr;
+  if (pwdErr) errs.password = pwdErr;
 
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
+  if (Object.keys(errs).length) {
+    setErrors(errs);
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const response = await userService.login({
-        email: form.email,
-        password: form.password
-      });
+    const response = await userService.login({
+      email: form.email,
+      password: form.password,
+    });
 
-      login(response.user);
+    login(response.user); // ✅ token já foi salvo dentro do userService.login
 
-      // ✅ NOVO: LIMPA FORM (não altera visual)
-      setForm({ email: '', password: '' });
-      setErrors({});
-      setAuthError('');
+    setForm({ email: '', password: '' });
+    setErrors({});
+    setAuthError('');
 
-      navigate('/');
+    navigate('/dashboard'); // ✅ era '/' — corrigido
 
-    } catch (error) {
-
-      setAuthError(error.message || 'Usuário ou senha inválidos');
-
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch (error) {
+    setAuthError(error.message || 'Usuário ou senha inválidos');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
  <div className="login-page">
       {/* LEFT */}

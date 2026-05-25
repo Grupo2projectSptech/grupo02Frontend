@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, ShoppingBag, BarChart2, Package, Truck, AlertCircle, icons } from 'lucide-react';
+import { User, Lock, BarChart2, Package, Truck, AlertCircle } from 'lucide-react'; // ✅ limpo
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
@@ -8,7 +8,6 @@ import { userService } from '../services/api';
 import icone from '../assets/images/icone_outlet.png';
 import "../app.css";
 import "../index.css";
-
 
 export default function Cadastro() {
   const { login } = useAuth();
@@ -37,7 +36,6 @@ export default function Cadastro() {
     if (usrErr) errs.username = usrErr;
     if (emlErr) errs.email = emlErr;
     if (pwdErr) errs.password = pwdErr;
-
     if (form.password !== form.confirmPassword) {
       errs.confirmPassword = 'As senhas não coincidem';
     }
@@ -54,14 +52,13 @@ export default function Cadastro() {
         username: form.username,
         email: form.email,
         password: form.password,
-        role: 'admin' // ✅ ACRESCENTADO
+        role: 'admin',
       });
 
       navigate('/login');
 
     } catch (error) {
       setAuthError(error.message || 'Erro ao cadastrar');
-
     } finally {
       setCadastro(false);
     }
@@ -70,13 +67,8 @@ export default function Cadastro() {
   return (
     <div className="cadastro-page">
 
-      {/* cadastro lateral */}
       <div className='cadastro-right'>
-        <div style={{
-          position: 'absolute',
-          top: 20,
-          left: 45
-        }}>
+        <div style={{ position: 'absolute', top: 20, left: 45 }}>
           <button className='theme-toggle' onClick={toggle} title='Alternar tema'>
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -98,7 +90,8 @@ export default function Cadastro() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate >
+        <form onSubmit={handleSubmit} noValidate>
+
           <div className='cadastro-input-wrap'>
             <User size={16} className="cadastro-input-ico" />
             <input
@@ -108,7 +101,7 @@ export default function Cadastro() {
               onChange={e => set('username', e.target.value)}
               autoComplete="username"
             />
-            {errors.username && <div className="field-error" style={{ marginTop: 4 }}>{errors.username}</div>}
+            {errors.username && <div className="field-error">{errors.username}</div>}
           </div>
 
           <div className='cadastro-input-wrap'>
@@ -121,7 +114,7 @@ export default function Cadastro() {
               onChange={e => set('email', e.target.value)}
               autoComplete='email'
             />
-            {errors.email && <div className="field-error" style={{ marginTop: 4 }}>{errors.email}</div>}
+            {errors.email && <div className="field-error">{errors.email}</div>}
           </div>
 
           <div className='cadastro-input-wrap'>
@@ -132,41 +125,38 @@ export default function Cadastro() {
               placeholder="Senha"
               value={form.password}
               onChange={e => set('password', e.target.value)}
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
-            {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}
+            {errors.password && <div className="field-error">{errors.password}</div>}
           </div>
 
           <div className='cadastro-input-wrap'>
             <Lock size={16} className="cadastro-input-ico" />
             <input
-              className={`cadastro-input${errors.password ? ' error' : ''}`}
+              className={`cadastro-input${errors.confirmPassword ? ' error' : ''}`} 
               type="password"
               placeholder="Confirmar Senha"
               value={form.confirmPassword}
               onChange={e => set('confirmPassword', e.target.value)}
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
-            {errors.password && <div className="field-error" style={{ marginTop: 4 }}>{errors.password}</div>}
+            {errors.confirmPassword && <div className="field-error">{errors.confirmPassword}</div>} {/* ✅ */}
           </div>
 
-          <button className='cadastro-btn'>
-            Cadastro
+          <button className='cadastro-btn' type="submit" disabled={cadastro}> {/* ✅ */}
+            {cadastro ? 'Cadastrando...' : 'Cadastrar'}
           </button>
 
         </form>
-
       </div>
 
       <div className="cadastro-left">
         <div className='cadastro-brand'>
-          <div className='cadastro-brand-icon' >
+          <div className='cadastro-brand-icon'>
             <img src={icone} alt='Logo Outlet' />
           </div>
           <div>
-            <h1>Outlet<br />
-              <span>Party</span>
-            </h1>
+            <h1>Outlet<br /><span>Party</span></h1>
             <p>Sistema de gestão completo para empresas, fornecedores e produtos — tudo em um só lugar.</p>
           </div>
           <div className="login-features">

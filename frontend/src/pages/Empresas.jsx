@@ -25,13 +25,13 @@ export default function Empresas() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    empresaService.getAll()
-      .then(r => setItems(r.data))
-      .catch(() => toast.error('Erro ao carregar'))
-      .finally(() => setLoading(false));
-  };
+const load = () => {
+  setLoading(true);
+  empresaService.listar()           // ✅
+    .then(r => setItems(r.data))
+    .catch(() => toast.error('Erro ao carregar'))
+    .finally(() => setLoading(false));
+};
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setErrors({}); setModal(true); };
@@ -43,24 +43,37 @@ export default function Empresas() {
     if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
   };
 
-  const handleSubmit = async (ev) => {
-    ev.preventDefault();
-    const errs = validateForm(form, SCHEMA);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setSaving(true);
-    try {
-      if (editing) { await empresaService.update(editing.id, form); toast.success('Empresa atualizada!'); }
-      else { await empresaService.create(form); toast.success('Empresa cadastrada!'); }
-      closeModal(); load();
-    } catch (err) { toast.error(err.message); }
-    finally { setSaving(false); }
-  };
+const handleSubmit = async (ev) => {
+  ev.preventDefault();
+  const errs = validateForm(form, SCHEMA);
+  if (Object.keys(errs).length) { setErrors(errs); return; }
+  setSaving(true);
+  try {
+    if (editing) {
+      await empresaService.atualizar(editing.id, form); // ✅
+      toast.success('Empresa atualizada!');
+    } else {
+      await empresaService.criar(form);                 // ✅
+      toast.success('Empresa cadastrada!');
+    }
+    closeModal(); load();
+  } catch (err) {
+    toast.error(err.message || 'Erro ao salvar empresa'); // ✅
+  } finally {
+    setSaving(false);
+  }
+};
 
-  const handleDelete = async (id) => {
-    if (!confirm('Excluir esta empresa?')) return;
-    try { await empresaService.delete(id); toast.success('Removida!'); load(); }
-    catch (err) { toast.error(err.message); }
-  };
+const handleDelete = async (id) => {
+  if (!window.confirm('Excluir esta empresa?')) return;  // ✅
+  try {
+    await empresaService.deletar(id);                    // ✅
+    toast.success('Removida!');
+    load();
+  } catch (err) {
+    toast.error(err.message || 'Erro ao remover empresa');
+  }
+};
 
   const filtered = items.filter(i =>
     i.razaoSocial.toLowerCase().includes(search.toLowerCase()) ||
