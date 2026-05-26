@@ -83,14 +83,14 @@ export default function App() {
             position="top-right"
             toastOptions={{
               style: {
-                background: 'var(--bg2)',
+                background: 'var(--bg3)',
                 color: 'var(--text)',
                 border: '1px solid var(--border)',
                 fontFamily: 'Outfit, sans-serif',
                 fontSize: '13.5px',
               },
-              success: { iconTheme: { primary: 'var(--success)', secondary: 'var(--bg2)' } },
-              error:   { iconTheme: { primary: 'var(--danger)',  secondary: 'var(--bg2)' } },
+              success: { iconTheme: { primary: 'var(--success)', secondary: 'var(--bg3)' } },
+              error:   { iconTheme: { primary: 'var(--danger)',  secondary: 'var(--bg3)' } },
             }}
           />
           <AppRoutes />

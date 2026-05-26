@@ -3,7 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Topbar({ title, subtitle, actions }) {
-  const { toggle, isDark } = useTheme();
+  const { theme, toggle } = useTheme();   // ✅ era "isDark" — usa "theme" corretamente
   const { user } = useAuth();
 
   return (
@@ -15,7 +15,7 @@ export default function Topbar({ title, subtitle, actions }) {
       <div className="topbar-actions">
         {actions}
         <button className="theme-toggle" onClick={toggle} title="Alternar tema">
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}  {/* ✅ */}
         </button>
       </div>
     </div>

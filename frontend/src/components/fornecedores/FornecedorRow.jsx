@@ -9,23 +9,26 @@ export default function FornecedorRow({ item, onEdit, onDelete, allProdutos }) {
   const [produtos, setProdutos] = useState(null);
   const [loadingProds, setLoadingProds] = useState(false);
 
-  const toggle = async () => {
-    if (!expanded && produtos === null) {
-      setLoadingProds(true);
-      try {
-        const linked = allProdutos
-          ? allProdutos.filter(p => p.fornecedor?.id === item.id || p.fornecedor?.nome === item.nome)
-          : (await produtoService.getByFornecedor(item.id)).data;
-        setProdutos(linked);
-      } catch {
-        setProdutos([]);
-        toast.error('Erro ao carregar produtos');
-      } finally {
-        setLoadingProds(false);
-      }
+const toggle = async () => {
+  if (!expanded && produtos === null) {
+    setLoadingProds(true);
+    try {
+      const linked = allProdutos
+        ? allProdutos.filter(p =>
+            p.fornecedor?.id === item.id ||
+            p.fornecedor?.nome === item.nome
+          )
+        : []; // ✅ fallback seguro — sem método inexistente
+      setProdutos(linked);
+    } catch {
+      setProdutos([]);
+      toast.error('Erro ao carregar produtos');
+    } finally {
+      setLoadingProds(false);
     }
-    setExpanded(e => !e);
-  };
+  }
+  setExpanded(e => !e);
+};
 
   const totalEstoque = produtos?.reduce((a, p) => a + (p.estoque || 0), 0) ?? null;
 

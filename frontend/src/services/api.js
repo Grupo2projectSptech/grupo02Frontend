@@ -65,20 +65,22 @@ api.interceptors.response.use(
 export const userService = {
   login: async (credentials) => {
     const response = await api.post('/api/auth/login', {
-      username: credentials.email || credentials.username,
+      email: credentials.email,
       password: credentials.password,
     });
 
-    const { token, refreshToken, user } = response.data;
+    const { token, refreshToken, id, name, username, role } = response.data;
 
-    if (token)        storage.setToken(token);
+    if (token) storage.setToken(token);
     if (refreshToken) storage.setRefreshToken(refreshToken);
+
+    const user = { id, name, username, role };
 
     return { token, refreshToken, user };
   },
 
-  cadastro:   (data) => api.post('/api/auth/register', data),
-  getProfile: ()     => api.get('/api/auth/profile'),
+  cadastro: (data) => api.post('/api/auth/register', data),
+  getProfile: () => api.get('/api/auth/profile'),
 
   logout: async () => {
     try {
@@ -97,18 +99,18 @@ export const userService = {
 // ─────────────────────────────────────────────
 export const empresaService = {
   // Português
-  listar:    ()          => api.get('/api/empresas'),
-  buscar:    (id)        => api.get(`/api/empresas/${id}`),
-  criar:     (data)      => api.post('/api/empresas', data),
-  atualizar: (id, data)  => api.put(`/api/empresas/${id}`, data),
-  deletar:   (id)        => api.delete(`/api/empresas/${id}`),
+  listar: () => api.get('/api/empresas'),
+  buscar: (id) => api.get(`/api/empresas/${id}`),
+  criar: (data) => api.post('/api/empresas', data),
+  atualizar: (id, data) => api.put(`/api/empresas/${id}`, data),
+  deletar: (id) => api.delete(`/api/empresas/${id}`),
 
   // Inglês (aliases para consistência)
-  getAll:    ()          => api.get('/api/empresas'),
-  getById:   (id)        => api.get(`/api/empresas/${id}`),
-  create:    (data)      => api.post('/api/empresas', data),
-  update:    (id, data)  => api.put(`/api/empresas/${id}`, data),
-  delete:    (id)        => api.delete(`/api/empresas/${id}`),
+  getAll: () => api.get('/api/empresas'),
+  getById: (id) => api.get(`/api/empresas/${id}`),
+  create: (data) => api.post('/api/empresas', data),
+  update: (id, data) => api.put(`/api/empresas/${id}`, data),
+  delete: (id) => api.delete(`/api/empresas/${id}`),
 };
 
 
@@ -117,18 +119,18 @@ export const empresaService = {
 // ─────────────────────────────────────────────
 export const fornecedorService = {
   // Português
-  listar:    ()          => api.get('/api/fornecedores'),
-  buscar:    (id)        => api.get(`/api/fornecedores/${id}`),
-  criar:     (data)      => api.post('/api/fornecedores', data),
-  atualizar: (id, data)  => api.put(`/api/fornecedores/${id}`, data),
-  deletar:   (id)        => api.delete(`/api/fornecedores/${id}`),
+  listar: () => api.get('/api/fornecedores'),
+  buscar: (id) => api.get(`/api/fornecedores/${id}`),
+  criar: (data) => api.post('/api/fornecedores', data),
+  atualizar: (id, data) => api.put(`/api/fornecedores/${id}`, data),
+  deletar: (id) => api.delete(`/api/fornecedores/${id}`),
 
   // Inglês (aliases)
-  getAll:    ()          => api.get('/api/fornecedores'),
-  getById:   (id)        => api.get(`/api/fornecedores/${id}`),
-  create:    (data)      => api.post('/api/fornecedores', data),
-  update:    (id, data)  => api.put(`/api/fornecedores/${id}`, data),
-  delete:    (id)        => api.delete(`/api/fornecedores/${id}`),
+  getAll: () => api.get('/api/fornecedores'),
+  getById: (id) => api.get(`/api/fornecedores/${id}`),
+  create: (data) => api.post('/api/fornecedores', data),
+  update: (id, data) => api.put(`/api/fornecedores/${id}`, data),
+  delete: (id) => api.delete(`/api/fornecedores/${id}`),
 };
 
 
@@ -137,18 +139,18 @@ export const fornecedorService = {
 // ─────────────────────────────────────────────
 export const produtoService = {
   // Português
-  listar:    ()          => api.get('/api/produtos'),
-  buscar:    (id)        => api.get(`/api/produtos/${id}`),
-  criar:     (data)      => api.post('/api/produtos', data),
-  atualizar: (id, data)  => api.put(`/api/produtos/${id}`, data),
-  deletar:   (id)        => api.delete(`/api/produtos/${id}`),
+  listar: () => api.get('/api/produtos'),
+  buscar: (id) => api.get(`/api/produtos/${id}`),
+  criar: (data) => api.post('/api/produtos', data),
+  atualizar: (id, data) => api.put(`/api/produtos/${id}`, data),
+  deletar: (id) => api.delete(`/api/produtos/${id}`),
 
   // Inglês (aliases)
-  getAll:    ()          => api.get('/api/produtos'),
-  getById:   (id)        => api.get(`/api/produtos/${id}`),
-  create:    (data)      => api.post('/api/produtos', data),
-  update:    (id, data)  => api.put(`/api/produtos/${id}`, data),
-  delete:    (id)        => api.delete(`/api/produtos/${id}`),
+  getAll: () => api.get('/api/produtos'),
+  getById: (id) => api.get(`/api/produtos/${id}`),
+  create: (data) => api.post('/api/produtos', data),
+  update: (id, data) => api.put(`/api/produtos/${id}`, data),
+  delete: (id) => api.delete(`/api/produtos/${id}`),
 };
 
 
@@ -157,16 +159,16 @@ export const produtoService = {
 // ─────────────────────────────────────────────
 export const vendaService = {
   // Português
-  listar:   ()     => api.get('/api/vendas'),
-  buscar:   (id)   => api.get(`/api/vendas/${id}`),
-  criar:    (data) => api.post('/api/vendas', data),
-  cancelar: (id)   => api.delete(`/api/vendas/${id}`),
+  listar: () => api.get('/api/vendas'),
+  buscar: (id) => api.get(`/api/vendas/${id}`),
+  criar: (data) => api.post('/api/vendas', data),
+  cancelar: (id) => api.delete(`/api/vendas/${id}`),
 
   // Inglês (aliases)
-  getAll:   ()     => api.get('/api/vendas'),
-  getById:  (id)   => api.get(`/api/vendas/${id}`),
-  create:   (data) => api.post('/api/vendas', data),
-  delete:   (id)   => api.delete(`/api/vendas/${id}`),
+  getAll: () => api.get('/api/vendas'),
+  getById: (id) => api.get(`/api/vendas/${id}`),
+  create: (data) => api.post('/api/vendas', data),
+  delete: (id) => api.delete(`/api/vendas/${id}`),
 };
 
 export default api;

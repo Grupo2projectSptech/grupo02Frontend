@@ -14,7 +14,7 @@ export default function Cadastro() {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [cadastro, setCadastro] = useState(false);
@@ -29,11 +29,11 @@ export default function Cadastro() {
     e.preventDefault();
 
     const errs = {};
-    const usrErr = validators.required(form.username, 'Usuário');
+    const usrErr = validators.required(form.name, 'Usuário');
     const pwdErr = validators.password(form.password);
     const emlErr = validators.email(form.email);
 
-    if (usrErr) errs.username = usrErr;
+    if (usrErr) errs.name = usrErr;
     if (emlErr) errs.email = emlErr;
     if (pwdErr) errs.password = pwdErr;
     if (form.password !== form.confirmPassword) {
@@ -49,7 +49,7 @@ export default function Cadastro() {
       setCadastro(true);
 
       await userService.cadastro({
-        username: form.username,
+        name: form.name,
         email: form.email,
         password: form.password,
         role: 'admin',
@@ -95,13 +95,13 @@ export default function Cadastro() {
           <div className='cadastro-input-wrap'>
             <User size={16} className="cadastro-input-ico" />
             <input
-              className={`cadastro-input${errors.username ? ' error' : ''}`}
+              className={`cadastro-input${errors.name ? ' error' : ''}`}
               placeholder="Nome de usuário"
-              value={form.username}
-              onChange={e => set('username', e.target.value)}
-              autoComplete="username"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              autoComplete="name"
             />
-            {errors.username && <div className="field-error">{errors.username}</div>}
+            {errors.name && <div className="field-error">{errors.name}</div>}
           </div>
 
           <div className='cadastro-input-wrap'>

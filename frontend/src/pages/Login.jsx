@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // ✅ acrescentei useEffect
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, BarChart2, Package, Truck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,45 +31,45 @@ export default function Login() {
     setAuthError('');
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const errs = {};
-  const usrErr = validators.required(form.email, 'Usuário');
-  const pwdErr = validators.password(form.password);
+    const errs = {};
+    const usrErr = validators.required(form.email, 'E-mail');
+    const pwdErr = validators.password(form.password);
 
-  if (usrErr) errs.email = usrErr;
-  if (pwdErr) errs.password = pwdErr;
+    if (usrErr) errs.email = usrErr;
+    if (pwdErr) errs.password = pwdErr;
 
-  if (Object.keys(errs).length) {
-    setErrors(errs);
-    return;
-  }
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const response = await userService.login({
-      email: form.email,
-      password: form.password,
-    });
+      const response = await userService.login({
+        email: form.email,
+        password: form.password,
+      });
 
-    login(response.user); // ✅ token já foi salvo dentro do userService.login
+      login(response.user);
 
-    setForm({ email: '', password: '' });
-    setErrors({});
-    setAuthError('');
+      setForm({ email: '', password: '' });
+      setErrors({});
+      setAuthError('');
 
-    navigate('/dashboard'); // ✅ era '/' — corrigido
+      navigate('/dashboard');
 
-  } catch (error) {
-    setAuthError(error.message || 'Usuário ou senha inválidos');
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error) {
+      setAuthError(error.message || 'Usuário ou senha inválidos');
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
- <div className="login-page">
+    <div className="login-page">
       {/* LEFT */}
       <div className="login-left">
         <div className="login-brand">

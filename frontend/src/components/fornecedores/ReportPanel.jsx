@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { BarChart2, TrendingUp, Package, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import MiniBar from './MiniBar';
@@ -14,7 +14,6 @@ const COLORS = [
 ];
 
 export default function ReportPanel({ fornecedores, allProdutos }) {
-  const reportRef = useRef(null);
   const [filterForn, setFilterForn] = useState('');
   const [sortBy, setSortBy] = useState('estoque');
   const [reportMode, setReportMode] = useState('fornecedor');
