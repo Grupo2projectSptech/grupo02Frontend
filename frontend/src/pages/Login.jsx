@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, BarChart2, Package, Truck, AlertCircle } from 'lucide-react';
+import { User, Lock, BarChart2, Package, Truck, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
@@ -18,11 +18,10 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // ✅ olho mágico
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/dashboard');
-    }
+    if (isAuthenticated()) navigate('/dashboard');
   }, []);
 
   const set = (k, v) => {
@@ -33,41 +32,28 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const errs = {};
     const usrErr = validators.required(form.email, 'E-mail');
     const pwdErr = validators.password(form.password);
-
-    if (usrErr) errs.email = usrErr;
+    if (usrErr) errs.email    = usrErr;
     if (pwdErr) errs.password = pwdErr;
-
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length) { setErrors(errs); return; }
 
     try {
       setLoading(true);
-
-      const response = await userService.login({
-        email: form.email,
-        password: form.password,
-      });
-
+      const response = await userService.login({ email: form.email, password: form.password });
       login(response.user);
-
       setForm({ email: '', password: '' });
       setErrors({});
       setAuthError('');
-
       navigate('/dashboard');
-
     } catch (error) {
       setAuthError(error.message || 'Usuário ou senha inválidos');
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="login-page">
       {/* LEFT */}
@@ -76,45 +62,18 @@ export default function Login() {
           <div className="login-brand-icon">
             <img src={icone} alt="Logo Outlet Party" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
-
           <div>
-            <h1>
-              Outlet<br />
-              <span>Party</span>
-            </h1>
-            <p>
-              Sistema de gestão completo para empresas, fornecedores e produtos.
-            </p>
+            <h1>Outlet<br /><span>Party</span></h1>
+            <p>Sistema de gestão completo para empresas, fornecedores e produtos.</p>
           </div>
-
           <div className="login-features">
             {[
-              {
-                icon: <BarChart2 size={15} />,
-                label: 'Dashboard em tempo real',
-                color: 'var(--primary-dim)',
-                c: 'var(--primary)'
-              },
-              {
-                icon: <Package size={15} />,
-                label: 'Gestão de produtos',
-                color: 'var(--success-dim)',
-                c: 'var(--success)'
-              },
-              {
-                icon: <Truck size={15} />,
-                label: 'Controle de fornecedores',
-                color: 'var(--info-dim)',
-                c: 'var(--info)'
-              },
+              { icon: <BarChart2 size={15} />, label: 'Dashboard em tempo real',    color: 'var(--primary-dim)', c: 'var(--primary)' },
+              { icon: <Package size={15} />,   label: 'Gestão de produtos',          color: 'var(--success-dim)', c: 'var(--success)' },
+              { icon: <Truck size={15} />,     label: 'Controle de fornecedores',    color: 'var(--info-dim)',    c: 'var(--info)'    },
             ].map(({ icon, label, color, c }) => (
               <div key={label} className="login-feature">
-                <div
-                  className="login-feature-icon"
-                  style={{ background: color, color: c }}
-                >
-                  {icon}
-                </div>
+                <div className="login-feature-icon" style={{ background: color, color: c }}>{icon}</div>
                 {label}
               </div>
             ))}
@@ -132,13 +91,9 @@ export default function Login() {
 
         <p className="login-form-title">Bem-vindo</p>
         <p className="login-form-sub">Faça login para continuar</p>
-
         <p className="login-form-sub">
           Não tem conta?{' '}
-          <span
-            className="cursor-pointer text-blue-200"
-            onClick={() => navigate('/cadastro')}
-          >
+          <span className="cursor-pointer text-blue-200" onClick={() => navigate('/cadastro')}>
             Cadastre-se
           </span>
         </p>
@@ -151,6 +106,7 @@ export default function Login() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* E-mail */}
           <div className="login-input-wrap">
             <User size={16} className="login-input-ico" />
             <input
@@ -162,15 +118,33 @@ export default function Login() {
             {errors.email && <div className="field-error">{errors.email}</div>}
           </div>
 
+          {/* Senha com olho */}
           <div className="login-input-wrap">
             <Lock size={16} className="login-input-ico" />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               className={`login-input${errors.password ? ' error' : ''}`}
               placeholder="Senha"
               value={form.password}
               onChange={e => set('password', e.target.value)}
+              style={{ paddingRight: 42 }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              style={{
+                position: 'absolute', right: 12, top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none', border: 'none',
+                cursor: 'pointer', color: 'var(--text3)',
+                display: 'flex', alignItems: 'center',
+                padding: 0, transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
             {errors.password && <div className="field-error">{errors.password}</div>}
           </div>
 

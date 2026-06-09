@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
-import { produtoService, fornecedorService, empresaService } from '../services/api';
+import { produtoService, fornecedorService } from '../services/api';
 import { validators, validateForm } from '../utils/validators';
 import { formatCurrency } from '../utils/formatters';
 import Topbar from '../components/layout/Topbar';
@@ -21,7 +21,6 @@ const EMPTY = {
 export default function Produtos() {
   const [items,       setItems]       = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
-  const [empresas,    setEmpresas]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [search,      setSearch]      = useState('');
   const [filterLow,   setFilterLow]   = useState(false);
@@ -37,12 +36,10 @@ export default function Produtos() {
     Promise.all([
       produtoService.listar(),     // ✅
       fornecedorService.listar(),  // ✅
-      empresaService.listar(),     // ✅
     ])
       .then(([p, f, e]) => {
         setItems(p.data);
         setFornecedores(f.data);
-        setEmpresas(e.data);
       })
       .catch(() => toast.error('Erro ao carregar'))
       .finally(() => setLoading(false));
@@ -384,16 +381,7 @@ export default function Produtos() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Empresa</label>
-                  <select
-                    className="form-select"
-                    value={form.empresa?.id || ''}
-                    onChange={e => setField('empresa', e.target.value ? { id: parseInt(e.target.value) } : null)}
-                  >
-                    <option value="">Selecione…</option>
-                    {empresas.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.razaoSocial}</option>
-                    ))}
-                  </select>
+
                 </div>
               </div>
 

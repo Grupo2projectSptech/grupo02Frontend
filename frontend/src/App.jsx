@@ -6,7 +6,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/layout/Sidebar';
 import Login        from './pages/Login';
 import Dashboard    from './pages/Dashboard';
-import Empresas     from './pages/Empresas';
 import Fornecedores from './pages/Fornecedores';
 import Produtos     from './pages/Produtos';
 import Cadastro     from './pages/Cadastro';
@@ -63,7 +62,6 @@ function AppRoutes() {
 
       {/* 🔐 Privadas */}
       <Route path="/dashboard"    element={<PrivateRoute><AppLayout><Dashboard /></AppLayout></PrivateRoute>} />
-      <Route path="/empresas"     element={<PrivateRoute><AppLayout><Empresas /></AppLayout></PrivateRoute>} />
       <Route path="/fornecedores" element={<PrivateRoute><AppLayout><Fornecedores /></AppLayout></PrivateRoute>} />
       <Route path="/produtos"     element={<PrivateRoute><AppLayout><Produtos /></AppLayout></PrivateRoute>} />
       <Route path="/vendas"       element={<PrivateRoute><AppLayout><Vendas /></AppLayout></PrivateRoute>} />

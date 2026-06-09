@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, BarChart2, Package, Truck, AlertCircle } from 'lucide-react'; // ✅ limpo
+import { User, Lock, BarChart2, Package, Truck, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
@@ -18,6 +18,8 @@ export default function Cadastro() {
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [cadastro, setCadastro] = useState(false);
+  const [showPassword,        setShowPassword]        = useState(false); // ✅ olho senha
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // ✅ olho confirmar
 
   const set = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -27,36 +29,20 @@ export default function Cadastro() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const errs = {};
     const usrErr = validators.required(form.name, 'Usuário');
     const pwdErr = validators.password(form.password);
     const emlErr = validators.email(form.email);
-
     if (usrErr) errs.name = usrErr;
     if (emlErr) errs.email = emlErr;
     if (pwdErr) errs.password = pwdErr;
-    if (form.password !== form.confirmPassword) {
-      errs.confirmPassword = 'As senhas não coincidem';
-    }
-
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
+    if (form.password !== form.confirmPassword) errs.confirmPassword = 'As senhas não coincidem';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
 
     try {
       setCadastro(true);
-
-      await userService.cadastro({
-        name: form.name,
-        email: form.email,
-        password: form.password,
-        role: 'admin',
-      });
-
+      await userService.cadastro({ name: form.name, email: form.email, password: form.password, role: 'admin' });
       navigate('/login');
-
     } catch (error) {
       setAuthError(error.message || 'Erro ao cadastrar');
     } finally {
@@ -64,9 +50,28 @@ export default function Cadastro() {
     }
   };
 
+  // Botão de olho reutilizável
+  const EyeButton = ({ show, onToggle }) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        position: 'absolute', right: 12, top: '50%',
+        transform: 'translateY(-50%)',
+        background: 'none', border: 'none',
+        cursor: 'pointer', color: 'var(--text3)',
+        display: 'flex', alignItems: 'center',
+        padding: 0, transition: 'color 0.15s',
+      }}
+      onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+      onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+    >
+      {show ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+  );
+
   return (
     <div className="cadastro-page">
-
       <div className='cadastro-right'>
         <div style={{ position: 'absolute', top: 20, left: 45 }}>
           <button className='theme-toggle' onClick={toggle} title='Alternar tema'>
@@ -92,6 +97,7 @@ export default function Cadastro() {
 
         <form onSubmit={handleSubmit} noValidate>
 
+          {/* Nome */}
           <div className='cadastro-input-wrap'>
             <User size={16} className="cadastro-input-ico" />
             <input
@@ -104,6 +110,7 @@ export default function Cadastro() {
             {errors.name && <div className="field-error">{errors.name}</div>}
           </div>
 
+          {/* E-mail */}
           <div className='cadastro-input-wrap'>
             <User size={16} className="cadastro-input-ico" />
             <input
@@ -117,33 +124,39 @@ export default function Cadastro() {
             {errors.email && <div className="field-error">{errors.email}</div>}
           </div>
 
+          {/* Senha com olho */}
           <div className='cadastro-input-wrap'>
             <Lock size={16} className="cadastro-input-ico" />
             <input
               className={`cadastro-input${errors.password ? ' error' : ''}`}
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Senha"
               value={form.password}
               onChange={e => set('password', e.target.value)}
               autoComplete="new-password"
+              style={{ paddingRight: 42 }}
             />
+            <EyeButton show={showPassword} onToggle={() => setShowPassword(s => !s)} />
             {errors.password && <div className="field-error">{errors.password}</div>}
           </div>
 
+          {/* Confirmar senha com olho */}
           <div className='cadastro-input-wrap'>
             <Lock size={16} className="cadastro-input-ico" />
             <input
-              className={`cadastro-input${errors.confirmPassword ? ' error' : ''}`} 
-              type="password"
+              className={`cadastro-input${errors.confirmPassword ? ' error' : ''}`}
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirmar Senha"
               value={form.confirmPassword}
               onChange={e => set('confirmPassword', e.target.value)}
               autoComplete="new-password"
+              style={{ paddingRight: 42 }}
             />
-            {errors.confirmPassword && <div className="field-error">{errors.confirmPassword}</div>} {/* ✅ */}
+            <EyeButton show={showConfirmPassword} onToggle={() => setShowConfirmPassword(s => !s)} />
+            {errors.confirmPassword && <div className="field-error">{errors.confirmPassword}</div>}
           </div>
 
-          <button className='cadastro-btn' type="submit" disabled={cadastro}> {/* ✅ */}
+          <button className='cadastro-btn' type="submit" disabled={cadastro}>
             {cadastro ? 'Cadastrando...' : 'Cadastrar'}
           </button>
 
@@ -162,8 +175,8 @@ export default function Cadastro() {
           <div className="login-features">
             {[
               { icon: <BarChart2 size={15} />, label: 'Dashboard com métricas em tempo real', color: 'var(--primary-dim)', c: 'var(--primary)' },
-              { icon: <Package size={15} />, label: 'Gestão de produtos e estoque', color: 'var(--success-dim)', c: 'var(--success)' },
-              { icon: <Truck size={15} />, label: 'Controle de fornecedores', color: 'var(--info-dim)', c: 'var(--info)' },
+              { icon: <Package size={15} />,   label: 'Gestão de produtos e estoque',          color: 'var(--success-dim)', c: 'var(--success)' },
+              { icon: <Truck size={15} />,     label: 'Controle de fornecedores',              color: 'var(--info-dim)',    c: 'var(--info)'    },
             ].map(({ icon, label, color, c }) => (
               <div key={label} className="login-feature">
                 <div className="login-feature-icon" style={{ background: color, color: c }}>{icon}</div>
@@ -173,7 +186,6 @@ export default function Cadastro() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

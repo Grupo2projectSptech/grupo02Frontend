@@ -95,26 +95,6 @@ export const userService = {
 
 
 // ─────────────────────────────────────────────
-// 🏢 EMPRESAS
-// ─────────────────────────────────────────────
-export const empresaService = {
-  // Português
-  listar: () => api.get('/api/empresas'),
-  buscar: (id) => api.get(`/api/empresas/${id}`),
-  criar: (data) => api.post('/api/empresas', data),
-  atualizar: (id, data) => api.put(`/api/empresas/${id}`, data),
-  deletar: (id) => api.delete(`/api/empresas/${id}`),
-
-  // Inglês (aliases para consistência)
-  getAll: () => api.get('/api/empresas'),
-  getById: (id) => api.get(`/api/empresas/${id}`),
-  create: (data) => api.post('/api/empresas', data),
-  update: (id, data) => api.put(`/api/empresas/${id}`, data),
-  delete: (id) => api.delete(`/api/empresas/${id}`),
-};
-
-
-// ─────────────────────────────────────────────
 // 🚚 FORNECEDORES
 // ─────────────────────────────────────────────
 export const fornecedorService = {

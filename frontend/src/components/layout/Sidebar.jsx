@@ -7,8 +7,7 @@ const links = [
   { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },  // ✅ era "/"
   { to: '/vendas',       label: 'Vendas',        icon: ShoppingBag },      // ✅ era Building2
   { to: '/fornecedores', label: 'Fornecedores',  icon: Truck },
-  { to: '/produtos',     label: 'Produtos',      icon: Package },
-  { to: '/empresas',     label: 'Empresas',      icon: Building2 },        // ✅ Building2 no lugar certo
+  { to: '/produtos',     label: 'Produtos',      icon: Package }
 ];
 
 export default function Sidebar() {
