@@ -41,7 +41,7 @@ export default function Cadastro() {
 
     try {
       setCadastro(true);
-      await userService.cadastro({ name: form.name, email: form.email, password: form.password, role: 'admin' });
+      await userService.cadastro({ name: form.name, email: form.email, password: form.password, role: 'user' });
       navigate('/login');
     } catch (error) {
       setAuthError(error.message || 'Erro ao cadastrar');
