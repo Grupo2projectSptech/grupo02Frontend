@@ -83,7 +83,7 @@ const toggle = async () => {
           <td colSpan={8} style={{ padding: 0 }}>
             <div style={{
               padding: '14px 20px 18px',
-              background: 'var(--bg2)',
+              background: 'var(--bg)',
               borderTop: '2px solid var(--primary)',
               borderBottom: '1px solid var(--border)',
             }}>

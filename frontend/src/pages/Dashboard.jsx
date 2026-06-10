@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { TrendingUp, Package, AlertTriangle } from 'lucide-react';
 import { vendaService, produtoService } from '../services/api';
 import Topbar from '../components/layout/Topbar';
@@ -29,33 +29,151 @@ const COLORS_PLAT = {
   'Outro':         '#A8E8F9',
 };
 
-// ── Gráfico de linha ──────────────────────────────────────
-function LineChart({ data, color = '#1a7fa8', height = 100 }) {
-  if (!data || data.length < 2) return null;
+// ── Gráfico de linha RESPONSIVO ──────────────────────────
+function LineChart({ data, color = '#1a7fa8', height = 120 }) {
+  const containerRef = useRef(null);
+  const [width, setWidth] = useState(600);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width || 600);
+      }
+    });
+    ro.observe(containerRef.current);
+    setWidth(containerRef.current.offsetWidth || 600);
+    return () => ro.disconnect();
+  }, []);
+
+  if (!data || data.length < 2) return <div ref={containerRef} style={{ width: '100%' }} />;
+
+  const PAD_LEFT  = 56;
+  const PAD_RIGHT = 12;
+  const PAD_TOP   = 10;
+  const PAD_BOT   = 28;
+  const w = width;
+  const h = height + PAD_TOP + PAD_BOT;
   const max = Math.max(...data.map(d => d.value), 1);
-  const w = 300; const h = height;
-  const pts = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - (d.value / max) * (h - 14) - 7;
-    return `${x},${y}`;
-  }).join(' ');
-  const areapts = `${pts} ${w},${h} 0,${h}`;
+
+  // Y-axis ticks (4 levels)
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
+    value: max * t,
+    y: h - PAD_BOT - t * height,
+  }));
+
+  const xOf = (i) => PAD_LEFT + (i / (data.length - 1)) * (w - PAD_LEFT - PAD_RIGHT);
+  const yOf = (v) => h - PAD_BOT - (v / max) * height;
+
+  const pts = data.map((d, i) => `${xOf(i)},${yOf(d.value)}`).join(' ');
+  const area = `${pts} ${xOf(data.length - 1)},${h - PAD_BOT} ${xOf(0)},${h - PAD_BOT}`;
+
+  // Tooltip state
+  const [hovered, setHovered] = useState(null);
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height }} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0"    />
-        </linearGradient>
-      </defs>
-      <polygon points={areapts} fill="url(#lg)" />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {data.map((d, i) => {
-        const x = (i / (data.length - 1)) * w;
-        const y = h - (d.value / max) * (h - 14) - 7;
-        return <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke="#fff" strokeWidth="1.5" />;
-      })}
-    </svg>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
+      {/* Tooltip */}
+      {hovered !== null && (
+        <div style={{
+          position: 'absolute',
+          top: yOf(data[hovered].value) - 44,
+          left: Math.min(Math.max(xOf(hovered) - 52, 0), w - 110),
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '6px 10px',
+          fontSize: 12,
+          fontWeight: 700,
+          color: 'var(--text)',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          zIndex: 10,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+        }}>
+          <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{data[hovered].mes} · </span>
+          {fmt(data[hovered].value)}
+        </div>
+      )}
+
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        width={w}
+        height={h}
+        style={{ display: 'block', overflow: 'visible' }}
+      >
+        <defs>
+          <linearGradient id="lg-fatur" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0"    />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines + Y labels */}
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line
+              x1={PAD_LEFT} x2={w - PAD_RIGHT}
+              y1={t.y} y2={t.y}
+              stroke="var(--border)" strokeWidth="1"
+              strokeDasharray={i === 0 ? 'none' : '4 3'}
+              opacity={0.5}
+            />
+            <text
+              x={PAD_LEFT - 6} y={t.y + 4}
+              textAnchor="end" fontSize="10" fill="var(--text3)"
+            >
+              {t.value >= 1000
+                ? `${(t.value / 1000).toFixed(0)}k`
+                : t.value.toFixed(0)}
+            </text>
+          </g>
+        ))}
+
+        {/* Area fill */}
+        <polygon points={area} fill="url(#lg-fatur)" />
+
+        {/* Line */}
+        <polyline
+          points={pts}
+          fill="none" stroke={color}
+          strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+        />
+
+        {/* X labels */}
+        {data.map((d, i) => (
+          <text
+            key={d.mes}
+            x={xOf(i)} y={h - PAD_BOT + 16}
+            textAnchor="middle" fontSize="10" fill="var(--text3)"
+          >
+            {/* Show every label if wide enough, else skip some */}
+            {(w > 480 || i % 2 === 0) ? d.mes : ''}
+          </text>
+        ))}
+
+        {/* Dots + hit areas */}
+        {data.map((d, i) => (
+          <g key={i}>
+            <circle
+              cx={xOf(i)} cy={yOf(d.value)} r="3.5"
+              fill={hovered === i ? '#fff' : color}
+              stroke={hovered === i ? color : '#fff'}
+              strokeWidth="2"
+              style={{ transition: 'r 0.1s' }}
+            />
+            {/* Invisible larger hit area */}
+            <circle
+              cx={xOf(i)} cy={yOf(d.value)} r="14"
+              fill="transparent"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ cursor: 'default' }}
+            />
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -87,7 +205,7 @@ function Donut({ segments, size = 130 }) {
   );
 }
 
-// ── KPI Card — sempre fundo escuro com texto claro ────────
+// ── KPI Card ──────────────────────────────────────────────
 function KpiCard({ label, value, sub, accentColor }) {
   return (
     <div style={{
@@ -103,7 +221,6 @@ function KpiCard({ label, value, sub, accentColor }) {
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${accentColor}22`; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)';    e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Label — sempre branco pois fundo é sempre escuro */}
       <div style={{
         fontSize: 10.5,
         fontWeight: 700,
@@ -115,8 +232,6 @@ function KpiCard({ label, value, sub, accentColor }) {
       }}>
         {label}
       </div>
-
-      {/* Valor principal */}
       <div style={{
         fontSize: value.length > 8 ? 19 : 26,
         fontWeight: 800,
@@ -127,11 +242,7 @@ function KpiCard({ label, value, sub, accentColor }) {
       }}>
         {value}
       </div>
-
-      {/* Sub */}
       <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{sub}</div>
-
-      {/* Barra colorida no rodapé */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: 3, background: accentColor,
@@ -262,38 +373,13 @@ export default function Dashboard() {
     <div>
       <Topbar title={`Olá, ${nomeExibido} 👋`} subtitle="Aqui está o resumo do seu negócio" />
 
-      {/* ── KPI Cards — fundo fixo escuro, texto sempre visível ── */}
+      {/* ── KPI Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
-        <KpiCard
-          label="Renda Atual"
-          value={fmt(kpis.renda)}
-          sub={`${kpis.totalMes} pedido(s) no mês`}
-          accentColor="#2ec98a"
-        />
-        <KpiCard
-          label="Lucro Total Mês"
-          value={fmtPct(kpis.lucroMesPct)}
-          sub={fmt(kpis.margemValor)}
-          accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'}
-        />
-        <KpiCard
-          label="Custo Total"
-          value={fmtPct(kpis.custoPct)}
-          sub={fmt(kpis.custoValor)}
-          accentColor="#f05365"
-        />
-        <KpiCard
-          label="Custo por Entrega"
-          value={fmtPct(kpis.custoPorEntregaPct)}
-          sub={`${fmt(kpis.custoPorEntrega)} / pedido`}
-          accentColor="#FFBA42"
-        />
-        <KpiCard
-          label="Vendas Hoje"
-          value={fmt(kpis.rendaHoje)}
-          sub={`${kpis.qtdHoje} pedido(s)`}
-          accentColor="#A8E8F9"
-        />
+        <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}           sub={`${kpis.totalMes} pedido(s) no mês`}    accentColor="#2ec98a" />
+        <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}  sub={fmt(kpis.margemValor)}                  accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'} />
+        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}     sub={fmt(kpis.custoValor)}                   accentColor="#f05365" />
+        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`} accentColor="#FFBA42" />
+        <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}       sub={`${kpis.qtdHoje} pedido(s)`}            accentColor="#A8E8F9" />
       </div>
 
       {/* ── Gráficos linha 1 ── */}
@@ -362,8 +448,13 @@ export default function Dashboard() {
 
       {/* ── Evolução de Faturamento ── */}
       <div className="chart-card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="chart-title" style={{ marginBottom: 0 }}>📈 Evolução de Faturamento</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>📈 Evolução de Faturamento</div>
+            <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>
+              Total: {fmt(evolucao.reduce((a, e) => a + e.value, 0))} em {anoFilt}
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 6 }}>
             {(anos.length ? anos : [new Date().getFullYear()]).map(a => (
               <button
@@ -380,16 +471,7 @@ export default function Dashboard() {
         {evolucao.every(e => e.value === 0) ? (
           <div className="empty" style={{ padding: 20 }}><p>Sem vendas em {anoFilt}</p></div>
         ) : (
-          <>
-            <LineChart data={evolucao} color="var(--primary)" height={100} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-              {evolucao.map(e => (
-                <div key={e.mes} style={{ fontSize: 10.5, color: 'var(--text3)', textAlign: 'center', flex: 1 }}>
-                  {e.mes}
-                </div>
-              ))}
-            </div>
-          </>
+          <LineChart data={evolucao} color="var(--primary)" height={120} />
         )}
       </div>
 
