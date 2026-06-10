@@ -1,56 +1,39 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, X, Search, Filter, ShoppingBag, TrendingUp, DollarSign, Package } from 'lucide-react';
+import { Plus, X, Search, ShoppingBag, TrendingUp, DollarSign, Package } from 'lucide-react';
 import { vendaService, produtoService } from '../services/api';
-import { validators } from '../utils/validators';
+import { useMarketplace } from '../context/MarketplaceContext';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
 
 // ─── Helpers ────────────────────────────────────────────
-const fmt = (v) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-
-const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
-
-const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+const fmt     = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+const fmtPct  = (v) => `${(v || 0).toFixed(1)}%`;
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
 
 const calculos = (f) => {
-  const custoTotal    = (parseFloat(f.custoUnidade) || 0) * (parseInt(f.quantidade) || 0);
-  const freteDiff     = (parseFloat(f.freteVenda) || 0) - (parseFloat(f.freteFlex) || 0);
-  const impostoValor  = ((parseFloat(f.imposto) || 0) / 100) * (parseFloat(f.valorVenda) || 0);
-  const custoCheio    = custoTotal
-    + (parseFloat(f.motoboy) || 0)
-    + (parseFloat(f.freteFlex) || 0)
+  const custoTotal   = (parseFloat(f.custoUnidade) || 0) * (parseInt(f.quantidade) || 0);
+  const freteDiff    = (parseFloat(f.freteVenda)   || 0) - (parseFloat(f.freteFlex) || 0);
+  const impostoValor = ((parseFloat(f.imposto)     || 0) / 100) * (parseFloat(f.valorVenda) || 0);
+  const custoCheio   = custoTotal
+    + (parseFloat(f.motoboy)     || 0)
+    + (parseFloat(f.freteFlex)   || 0)
     + impostoValor
     + (parseFloat(f.operacional) || 0)
-    + (parseFloat(f.tarifa) || 0);
-  const margem        = (parseFloat(f.valorVenda) || 0) - custoCheio;
-  const margemPct     = (parseFloat(f.valorVenda) || 0)
-    ? (margem / parseFloat(f.valorVenda)) * 100
-    : 0;
+    + (parseFloat(f.tarifa)      || 0);
+  const margem    = (parseFloat(f.valorVenda) || 0) - custoCheio;
+  const margemPct = (parseFloat(f.valorVenda) || 0) ? (margem / parseFloat(f.valorVenda)) * 100 : 0;
   return { custoTotal, freteDiff, impostoValor, custoCheio, margem, margemPct };
 };
 
-// ─── Estado inicial do form ──────────────────────────────
 const EMPTY = {
   data: new Date().toISOString().slice(0, 10),
-  nomeProduto: '',
-  tipo: 'Shopee',
-  produto: '',
-  quantidade: '',
-  custoUnidade: '',
-  valorVenda: '',
-  idPedido: '',
-  motoboy: '',
-  freteFlex: '',
-  freteVenda: '',
-  tarifa: '',
-  imposto: '',
-  operacional: '',
+  nomeProduto: '', tipo: 'Shopee', produto: '',
+  quantidade: '', custoUnidade: '', valorVenda: '', idPedido: '',
+  motoboy: '', freteFlex: '', freteVenda: '',
+  tarifa: '', imposto: '', operacional: '',
 };
 
-const TIPOS = ['Shopee', 'Mercado Livre', 'Manual', 'Outro'];
-
+const TIPOS    = ['Shopee', 'Mercado Livre', 'Manual', 'Outro'];
 const PERIODOS = [
   { label: 'Todos',       value: 'all'   },
   { label: 'Hoje',        value: 'today' },
@@ -60,7 +43,8 @@ const PERIODOS = [
 
 // ─── Componente principal ────────────────────────────────
 export default function Vendas() {
-  const [items,    setItems]    = useState([]);
+  const { mkVendas }           = useMarketplace();   // ← vendas do Marketplace
+  const [apiItems, setApiItems] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [modal,    setModal]    = useState(false);
@@ -68,43 +52,38 @@ export default function Vendas() {
   const [form,     setForm]     = useState(EMPTY);
   const [errors,   setErrors]   = useState({});
 
-  // Filtros
-  const [search,   setSearch]   = useState('');
-  const [tipo,     setTipo]     = useState('all');
-  const [periodo,  setPeriodo]  = useState('all');
+  const [search,  setSearch]  = useState('');
+  const [tipo,    setTipo]    = useState('all');
+  const [periodo, setPeriodo] = useState('all');
+  const [origem,  setOrigem]  = useState('all'); // all | api | marketplace
 
-  // ── Load ──────────────────────────────────────────────
   const load = () => {
     setLoading(true);
     Promise.all([vendaService.listar(), produtoService.listar()])
-      .then(([v, p]) => {
-        setItems(v.data || []);
-        setProdutos(p.data || []);
-      })
+      .then(([v, p]) => { setApiItems(v.data || []); setProdutos(p.data || []); })
       .catch(() => toast.error('Erro ao carregar vendas'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
-  // ── Filtros aplicados ─────────────────────────────────
+  // Mescla API + Marketplace com flag de origem
+  const allItems = useMemo(() => [
+    ...apiItems.map(i => ({ ...i, _source: 'api' })),
+    ...mkVendas.map(i => ({ ...i, _source: 'marketplace' })),
+  ], [apiItems, mkVendas]);
+
+  // Filtros
   const filtered = useMemo(() => {
     const now   = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    return items.filter(i => {
-      // Busca textual
+    return allItems.filter(i => {
       const q = search.toLowerCase();
-      const matchSearch =
-        !q ||
-        (i.nomeProduto || '').toLowerCase().includes(q) ||
-        (i.idPedido    || '').toLowerCase().includes(q) ||
-        (i.tipo        || '').toLowerCase().includes(q);
+      const matchSearch  = !q || (i.nomeProduto || '').toLowerCase().includes(q) || (i.idPedido || '').toLowerCase().includes(q) || (i.tipo || '').toLowerCase().includes(q);
+      const matchTipo    = tipo === 'all' || i.tipo === tipo;
+      const matchOrigem  = origem === 'all' || i._source === origem;
 
-      // Tipo de plataforma
-      const matchTipo = tipo === 'all' || i.tipo === tipo;
-
-      // Período
       let matchPeriodo = true;
       if (periodo !== 'all' && i.data) {
         const d = new Date(i.data);
@@ -113,41 +92,32 @@ export default function Vendas() {
         if (periodo === 'month') matchPeriodo = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       }
 
-      return matchSearch && matchTipo && matchPeriodo;
+      return matchSearch && matchTipo && matchOrigem && matchPeriodo;
     });
-  }, [items, search, tipo, periodo]);
+  }, [allItems, search, tipo, periodo, origem]);
 
-  // ── Totalizadores ─────────────────────────────────────
-  const totais = useMemo(() => {
-    return filtered.reduce((acc, i) => {
-      const c = calculos(i);
-      acc.vendas      += parseFloat(i.valorVenda) || 0;
-      acc.custo       += c.custoCheio;
-      acc.margem      += c.margem;
-      acc.qtd         += parseInt(i.quantidade)   || 0;
-      return acc;
-    }, { vendas: 0, custo: 0, margem: 0, qtd: 0 });
-  }, [filtered]);
+  // Totalizadores
+  const totais = useMemo(() => filtered.reduce((acc, i) => {
+    const c = calculos(i);
+    acc.vendas += parseFloat(i.valorVenda) || 0;
+    acc.custo  += c.custoCheio;
+    acc.margem += c.margem;
+    acc.qtd    += parseInt(i.quantidade)   || 0;
+    return acc;
+  }, { vendas: 0, custo: 0, margem: 0, qtd: 0 }), [filtered]);
 
-  // ── Form helpers ──────────────────────────────────────
-  const setField = (k, v) => {
-    setForm(f => ({ ...f, [k]: v }));
-    if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
-  };
-
+  // Form helpers
+  const setField   = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (errors[k]) setErrors(e => ({ ...e, [k]: null })); };
   const openModal  = () => { setForm(EMPTY); setErrors({}); setModal(true); };
   const closeModal = () => { setModal(false); };
 
-  // ── Submit ────────────────────────────────────────────
   const handleSubmit = async (ev) => {
     ev.preventDefault();
-
     const errs = {};
     if (!form.nomeProduto && !form.produto) errs.nomeProduto = 'Informe o produto';
-    if (!form.quantidade   || form.quantidade <= 0) errs.quantidade  = 'Quantidade inválida';
-    if (!form.valorVenda   || form.valorVenda <= 0) errs.valorVenda  = 'Valor de venda inválido';
-    if (!form.data)                                 errs.data        = 'Data obrigatória';
-
+    if (!form.quantidade  || form.quantidade <= 0) errs.quantidade = 'Quantidade inválida';
+    if (!form.valorVenda  || form.valorVenda <= 0) errs.valorVenda = 'Valor de venda inválido';
+    if (!form.data)                                errs.data       = 'Data obrigatória';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSaving(true);
@@ -155,13 +125,10 @@ export default function Vendas() {
       const c = calculos(form);
       const payload = {
         ...form,
-        custoTotal:   c.custoTotal,
-        freteDiff:    c.freteDiff,
-        impostoValor: c.impostoValor,
-        custoCheio:   c.custoCheio,
-        margem:       c.margem,
-        margemPct:    c.margemPct,
-        nomeProduto:  form.nomeProduto || produtos.find(p => p.id === form.produto)?.nome || '',
+        custoTotal: c.custoTotal, freteDiff: c.freteDiff,
+        impostoValor: c.impostoValor, custoCheio: c.custoCheio,
+        margem: c.margem, margemPct: c.margemPct,
+        nomeProduto: form.nomeProduto || produtos.find(p => p.id === form.produto)?.nome || '',
       };
       await vendaService.criar(payload);
       toast.success('Venda cadastrada!');
@@ -174,7 +141,6 @@ export default function Vendas() {
     }
   };
 
-  // ── Preview de cálculo no modal ───────────────────────
   const preview = calculos(form);
 
   // ─────────────────────────────────────────────────────
@@ -182,7 +148,7 @@ export default function Vendas() {
     <div>
       <Topbar
         title="Vendas"
-        subtitle={`${items.length} venda(s) registrada(s)`}
+        subtitle={`${allItems.length} venda(s) · ${apiItems.length} da API · ${mkVendas.length} do Marketplace`}
         actions={
           <button className="btn btn-primary" onClick={openModal}>
             <Plus size={15} /> Nova Venda
@@ -190,7 +156,7 @@ export default function Vendas() {
         }
       />
 
-      {/* ── Cards de totais ── */}
+      {/* Cards de totais */}
       <div className="stat-grid" style={{ marginBottom: 16 }}>
         {[
           { label: 'Total Vendido',  value: fmt(totais.vendas), icon: DollarSign, color: 'var(--success)', dim: 'var(--success-dim)' },
@@ -204,50 +170,42 @@ export default function Vendas() {
                 <div className="stat-value" style={{ fontSize: 22 }}>{value}</div>
                 <div className="stat-label">{label}</div>
               </div>
-              <div className="stat-icon-wrap" style={{ background: dim, color }}>
-                <Icon size={20} />
-              </div>
+              <div className="stat-icon-wrap" style={{ background: dim, color }}><Icon size={20} /></div>
             </div>
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: color, borderRadius: '0 0 12px 12px', opacity: 0.6 }} />
           </div>
         ))}
       </div>
 
-      {/* ── Tabela ── */}
+      {/* Tabela */}
       <div className="card">
-
         {/* Filtros */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-
           <div className="search-wrap" style={{ flex: 1, minWidth: 200 }}>
             <svg className="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input
-              className="search-input"
-              placeholder="Buscar produto, pedido…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <input className="search-input" placeholder="Buscar produto, pedido…"
+              value={search} onChange={e => setSearch(e.target.value)} />
           </div>
 
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: 140 }}
-            value={tipo}
-            onChange={e => setTipo(e.target.value)}
-          >
+          <select className="form-select" style={{ width: 'auto', minWidth: 140 }}
+            value={tipo} onChange={e => setTipo(e.target.value)}>
             <option value="all">Todas plataformas</option>
             {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
 
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: 130 }}
-            value={periodo}
-            onChange={e => setPeriodo(e.target.value)}
-          >
+          <select className="form-select" style={{ width: 'auto', minWidth: 130 }}
+            value={periodo} onChange={e => setPeriodo(e.target.value)}>
             {PERIODOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+
+          {/* Filtro de origem — novo */}
+          <select className="form-select" style={{ width: 'auto', minWidth: 150 }}
+            value={origem} onChange={e => setOrigem(e.target.value)}>
+            <option value="all">Todas as origens</option>
+            <option value="api">Somente API</option>
+            <option value="marketplace">Somente Marketplace</option>
           </select>
 
           <div style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
@@ -255,7 +213,6 @@ export default function Vendas() {
           </div>
         </div>
 
-        {/* Tabela */}
         {loading ? (
           <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>Carregando…</div>
         ) : filtered.length === 0 ? (
@@ -272,6 +229,7 @@ export default function Vendas() {
                   <th>Data</th>
                   <th>Produto</th>
                   <th>Tipo</th>
+                  <th>Origem</th>
                   <th>Qtd</th>
                   <th>$ Custo Un.</th>
                   <th>$ Custo Total</th>
@@ -280,7 +238,6 @@ export default function Vendas() {
                   <th>$ Motoboy</th>
                   <th>$ Frete Flex</th>
                   <th>$ Frete Dif.</th>
-                  <th>$ Frete</th>
                   <th>Tarifa</th>
                   <th>% Imposto</th>
                   <th>$ Imposto</th>
@@ -302,8 +259,12 @@ export default function Vendas() {
                         <span className={`badge ${
                           i.tipo === 'Shopee'        ? 'badge-orange' :
                           i.tipo === 'Mercado Livre' ? 'badge-warn'   : 'badge-inactive'
-                        }`}>
-                          {i.tipo}
+                        }`}>{i.tipo}</span>
+                      </td>
+                      <td>
+                        <span className={`badge ${i._source === 'marketplace' ? 'badge-info' : 'badge-inactive'}`}
+                          style={{ fontSize: 10 }}>
+                          {i._source === 'marketplace' ? 'Marketplace' : 'API'}
                         </span>
                       </td>
                       <td>{i.quantidade}</td>
@@ -314,7 +275,6 @@ export default function Vendas() {
                       <td>{fmt(i.motoboy)}</td>
                       <td>{fmt(i.freteFlex)}</td>
                       <td>{fmt(c.freteDiff)}</td>
-                      <td>{fmt(i.freteVenda)}</td>
                       <td>{fmt(i.tarifa)}</td>
                       <td>{fmtPct(i.imposto)}</td>
                       <td>{fmt(c.impostoValor)}</td>
@@ -331,110 +291,66 @@ export default function Vendas() {
         )}
       </div>
 
-      {/* ── Modal Nova Venda ── */}
+      {/* Modal Nova Venda */}
       {modal && (
         <div className="overlay" onClick={closeModal}>
-          <div
-            className="modal"
-            style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Nova Venda</h2>
-              <button className="btn btn-ghost btn-icon" onClick={closeModal}>
-                <X size={16} />
-              </button>
+              <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
             </div>
-
             <form onSubmit={handleSubmit} noValidate>
-
-              {/* Linha 1 — Data + Tipo + ID Pedido */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Data *</label>
-                  <input
-                    type="date"
-                    className={`form-input${errors.data ? ' error' : ''}`}
-                    value={form.data}
-                    onChange={e => setField('data', e.target.value)}
-                  />
+                  <input type="date" className={`form-input${errors.data ? ' error' : ''}`}
+                    value={form.data} onChange={e => setField('data', e.target.value)} />
                   {errors.data && <div className="field-error">{errors.data}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Plataforma</label>
-                  <select
-                    className="form-select"
-                    value={form.tipo}
-                    onChange={e => setField('tipo', e.target.value)}
-                  >
+                  <select className="form-select" value={form.tipo} onChange={e => setField('tipo', e.target.value)}>
                     {TIPOS.map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">ID Pedido</label>
-                  <input
-                    className="form-input"
-                    placeholder="Ex: 123456789"
-                    value={form.idPedido}
-                    onChange={e => setField('idPedido', e.target.value)}
-                  />
+                  <input className="form-input" placeholder="Ex: 123456789"
+                    value={form.idPedido} onChange={e => setField('idPedido', e.target.value)} />
                 </div>
               </div>
 
-              {/* Linha 2 — Produto (nome livre ou seleção) */}
               <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
                   <label className="form-label">Produto *</label>
-                  <input
-                    className={`form-input${errors.nomeProduto ? ' error' : ''}`}
+                  <input className={`form-input${errors.nomeProduto ? ' error' : ''}`}
                     placeholder="Nome do produto vendido"
-                    value={form.nomeProduto}
-                    onChange={e => setField('nomeProduto', e.target.value)}
-                  />
+                    value={form.nomeProduto} onChange={e => setField('nomeProduto', e.target.value)} />
                   {errors.nomeProduto && <div className="field-error">{errors.nomeProduto}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Qtd *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className={`form-input${errors.quantidade ? ' error' : ''}`}
-                    placeholder="1"
-                    value={form.quantidade}
-                    onChange={e => setField('quantidade', e.target.value)}
-                  />
+                  <input type="number" min="1" className={`form-input${errors.quantidade ? ' error' : ''}`}
+                    placeholder="1" value={form.quantidade} onChange={e => setField('quantidade', e.target.value)} />
                   {errors.quantidade && <div className="field-error">{errors.quantidade}</div>}
                 </div>
               </div>
 
-              {/* Linha 3 — Valores principais */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">$ Custo Unidade</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    placeholder="0,00"
-                    value={form.custoUnidade}
-                    onChange={e => setField('custoUnidade', e.target.value)}
-                  />
+                  <input type="number" step="0.01" className="form-input" placeholder="0,00"
+                    value={form.custoUnidade} onChange={e => setField('custoUnidade', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">$ Valor de Venda *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={`form-input${errors.valorVenda ? ' error' : ''}`}
-                    placeholder="0,00"
-                    value={form.valorVenda}
-                    onChange={e => setField('valorVenda', e.target.value)}
-                  />
+                  <input type="number" step="0.01" className={`form-input${errors.valorVenda ? ' error' : ''}`}
+                    placeholder="0,00" value={form.valorVenda} onChange={e => setField('valorVenda', e.target.value)} />
                   {errors.valorVenda && <div className="field-error">{errors.valorVenda}</div>}
                 </div>
               </div>
 
-              {/* Linha 4 — Fretes */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">$ Motoboy</label>
@@ -453,7 +369,6 @@ export default function Vendas() {
                 </div>
               </div>
 
-              {/* Linha 5 — Taxas */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">$ Tarifa</label>
@@ -472,53 +387,28 @@ export default function Vendas() {
                 </div>
               </div>
 
-              {/* Preview de cálculo */}
               {(form.valorVenda || form.custoUnidade) && (
-                <div style={{
-                  background: 'var(--bg3, var(--bg2))',
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  padding: '12px 16px',
-                  marginBottom: 16,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 12,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>Custo Total</div>
-                    <div style={{ fontWeight: 600 }}>{fmt(preview.custoTotal)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>Custo Cheio</div>
-                    <div style={{ fontWeight: 600 }}>{fmt(preview.custoCheio)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>Imposto</div>
-                    <div style={{ fontWeight: 600 }}>{fmt(preview.impostoValor)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>Frete Diferença</div>
-                    <div style={{ fontWeight: 600 }}>{fmt(preview.freteDiff)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>% Margem</div>
-                    <div style={{ fontWeight: 700, color: preview.margemPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                      {fmtPct(preview.margemPct)}
+                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                  {[
+                    ['Custo Total',     fmt(preview.custoTotal)],
+                    ['Custo Cheio',     fmt(preview.custoCheio)],
+                    ['Imposto',         fmt(preview.impostoValor)],
+                    ['Frete Diferença', fmt(preview.freteDiff)],
+                    ['% Margem',        fmtPct(preview.margemPct)],
+                    ['$ Margem',        fmt(preview.margem)],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontWeight: 600, color: label.includes('Margem') ? (preview.margem >= 0 ? 'var(--success)' : 'var(--danger)') : 'var(--text)' }}>
+                        {value}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>$ Margem</div>
-                    <div style={{ fontWeight: 700, color: preview.margem >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                      {fmt(preview.margem)}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={closeModal}>
-                  Cancelar
-                </button>
+                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Salvando…' : 'Cadastrar Venda'}
                 </button>

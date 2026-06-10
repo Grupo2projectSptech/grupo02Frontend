@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { TrendingUp, Package, AlertTriangle } from 'lucide-react';
 import { vendaService, produtoService } from '../services/api';
+import { useMarketplace } from '../context/MarketplaceContext';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../context/AuthContext';
 
@@ -29,7 +30,7 @@ const COLORS_PLAT = {
   'Outro':         '#A8E8F9',
 };
 
-// ── Gráfico de linha RESPONSIVO ──────────────────────────
+// ── Gráfico de linha ──────────────────────────────────────
 function LineChart({ data, color = '#1a7fa8', height = 120 }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(600);
@@ -37,9 +38,7 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setWidth(entry.contentRect.width || 600);
-      }
+      for (const entry of entries) setWidth(entry.contentRect.width || 600);
     });
     ro.observe(containerRef.current);
     setWidth(containerRef.current.offsetWidth || 600);
@@ -48,15 +47,11 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
 
   if (!data || data.length < 2) return <div ref={containerRef} style={{ width: '100%' }} />;
 
-  const PAD_LEFT  = 56;
-  const PAD_RIGHT = 12;
-  const PAD_TOP   = 10;
-  const PAD_BOT   = 28;
+  const PAD_LEFT = 56, PAD_RIGHT = 12, PAD_TOP = 10, PAD_BOT = 28;
   const w = width;
   const h = height + PAD_TOP + PAD_BOT;
   const max = Math.max(...data.map(d => d.value), 1);
 
-  // Y-axis ticks (4 levels)
   const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
     value: max * t,
     y: h - PAD_BOT - t * height,
@@ -65,111 +60,61 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
   const xOf = (i) => PAD_LEFT + (i / (data.length - 1)) * (w - PAD_LEFT - PAD_RIGHT);
   const yOf = (v) => h - PAD_BOT - (v / max) * height;
 
-  const pts = data.map((d, i) => `${xOf(i)},${yOf(d.value)}`).join(' ');
+  const pts  = data.map((d, i) => `${xOf(i)},${yOf(d.value)}`).join(' ');
   const area = `${pts} ${xOf(data.length - 1)},${h - PAD_BOT} ${xOf(0)},${h - PAD_BOT}`;
 
-  // Tooltip state
   const [hovered, setHovered] = useState(null);
 
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
-      {/* Tooltip */}
       {hovered !== null && (
         <div style={{
           position: 'absolute',
           top: yOf(data[hovered].value) - 44,
           left: Math.min(Math.max(xOf(hovered) - 52, 0), w - 110),
-          background: 'var(--card)',
+          background: 'var(--bg3)',
           border: '1px solid var(--border)',
-          borderRadius: 8,
-          padding: '6px 10px',
-          fontSize: 12,
-          fontWeight: 700,
-          color: 'var(--text)',
-          pointerEvents: 'none',
-          whiteSpace: 'nowrap',
-          zIndex: 10,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+          borderRadius: 8, padding: '6px 10px',
+          fontSize: 12, fontWeight: 700, color: 'var(--text)',
+          pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10,
+          boxShadow: 'var(--shadow-sm)',
         }}>
           <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{data[hovered].mes} · </span>
           {fmt(data[hovered].value)}
         </div>
       )}
-
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        width={w}
-        height={h}
-        style={{ display: 'block', overflow: 'visible' }}
-      >
+      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} style={{ display: 'block', overflow: 'visible' }}>
         <defs>
           <linearGradient id="lg-fatur" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
             <stop offset="100%" stopColor={color} stopOpacity="0"    />
           </linearGradient>
         </defs>
-
-        {/* Grid lines + Y labels */}
         {ticks.map((t, i) => (
           <g key={i}>
-            <line
-              x1={PAD_LEFT} x2={w - PAD_RIGHT}
-              y1={t.y} y2={t.y}
+            <line x1={PAD_LEFT} x2={w - PAD_RIGHT} y1={t.y} y2={t.y}
               stroke="var(--border)" strokeWidth="1"
-              strokeDasharray={i === 0 ? 'none' : '4 3'}
-              opacity={0.5}
-            />
-            <text
-              x={PAD_LEFT - 6} y={t.y + 4}
-              textAnchor="end" fontSize="10" fill="var(--text3)"
-            >
-              {t.value >= 1000
-                ? `${(t.value / 1000).toFixed(0)}k`
-                : t.value.toFixed(0)}
+              strokeDasharray={i === 0 ? 'none' : '4 3'} opacity={0.5} />
+            <text x={PAD_LEFT - 6} y={t.y + 4} textAnchor="end" fontSize="10" fill="var(--text3)">
+              {t.value >= 1000 ? `${(t.value / 1000).toFixed(0)}k` : t.value.toFixed(0)}
             </text>
           </g>
         ))}
-
-        {/* Area fill */}
         <polygon points={area} fill="url(#lg-fatur)" />
-
-        {/* Line */}
-        <polyline
-          points={pts}
-          fill="none" stroke={color}
-          strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
-        />
-
-        {/* X labels */}
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {data.map((d, i) => (
-          <text
-            key={d.mes}
-            x={xOf(i)} y={h - PAD_BOT + 16}
-            textAnchor="middle" fontSize="10" fill="var(--text3)"
-          >
-            {/* Show every label if wide enough, else skip some */}
+          <text key={d.mes} x={xOf(i)} y={h - PAD_BOT + 16} textAnchor="middle" fontSize="10" fill="var(--text3)">
             {(w > 480 || i % 2 === 0) ? d.mes : ''}
           </text>
         ))}
-
-        {/* Dots + hit areas */}
         {data.map((d, i) => (
           <g key={i}>
-            <circle
-              cx={xOf(i)} cy={yOf(d.value)} r="3.5"
+            <circle cx={xOf(i)} cy={yOf(d.value)} r="3.5"
               fill={hovered === i ? '#fff' : color}
-              stroke={hovered === i ? color : '#fff'}
-              strokeWidth="2"
-              style={{ transition: 'r 0.1s' }}
-            />
-            {/* Invisible larger hit area */}
-            <circle
-              cx={xOf(i)} cy={yOf(d.value)} r="14"
-              fill="transparent"
-              onMouseEnter={() => setHovered(i)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: 'default' }}
-            />
+              stroke={hovered === i ? color : '#fff'} strokeWidth="2" />
+            <circle cx={xOf(i)} cy={yOf(d.value)} r="14" fill="transparent"
+              onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
+              style={{ cursor: 'default' }} />
           </g>
         ))}
       </svg>
@@ -180,22 +125,20 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
 // ── Donut ─────────────────────────────────────────────────
 function Donut({ segments, size = 130 }) {
   const total = segments.reduce((a, s) => a + s.value, 0) || 1;
-  const r = 40; const cx = 60; const cy = 60;
-  const circ = 2 * Math.PI * r;
+  const r = 40, cx = 60, cy = 60, circ = 2 * Math.PI * r;
   let offset = 0;
   return (
     <svg width={size} height={size} viewBox="0 0 120 120">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="18" />
       {segments.map((s, i) => {
-        const dash  = (s.value / total) * circ;
+        const dash = (s.value / total) * circ;
         const el = (
           <circle key={i} cx={cx} cy={cy} r={r} fill="none"
             stroke={s.color} strokeWidth="18"
             strokeDasharray={`${dash} ${circ - dash}`}
             strokeDashoffset={-offset}
             transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ transition: 'stroke-dasharray 0.5s ease' }}
-          />
+            style={{ transition: 'stroke-dasharray 0.5s ease' }} />
         );
         offset += dash;
         return el;
@@ -211,66 +154,48 @@ function KpiCard({ label, value, sub, accentColor }) {
     <div style={{
       background: '#14213D',
       border: `1px solid ${accentColor}33`,
-      borderRadius: 12,
-      padding: '18px 20px',
-      position: 'relative',
-      overflow: 'hidden',
-      transition: 'transform 0.18s, box-shadow 0.18s',
-      cursor: 'default',
+      borderRadius: 12, padding: '18px 20px',
+      position: 'relative', overflow: 'hidden',
+      transition: 'transform 0.18s, box-shadow 0.18s', cursor: 'default',
     }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${accentColor}22`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)';    e.currentTarget.style.boxShadow = 'none'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      <div style={{
-        fontSize: 10.5,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        color: 'rgba(255,255,255,0.6)',
-        marginBottom: 10,
-        fontFamily: 'Bricolage Grotesque, sans-serif',
-      }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.6)', marginBottom: 10, fontFamily: 'Bricolage Grotesque, sans-serif' }}>
         {label}
       </div>
-      <div style={{
-        fontSize: value.length > 8 ? 19 : 26,
-        fontWeight: 800,
-        color: accentColor,
-        fontFamily: 'Bricolage Grotesque, sans-serif',
-        lineHeight: 1.1,
-        marginBottom: 6,
-      }}>
+      <div style={{ fontSize: value.length > 8 ? 19 : 26, fontWeight: 800, color: accentColor, fontFamily: 'Bricolage Grotesque, sans-serif', lineHeight: 1.1, marginBottom: 6 }}>
         {value}
       </div>
       <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{sub}</div>
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: 3, background: accentColor,
-        borderRadius: '0 0 12px 12px', opacity: 0.7,
-      }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accentColor, borderRadius: '0 0 12px 12px', opacity: 0.7 }} />
     </div>
   );
 }
 
 // ── Componente principal ──────────────────────────────────
 export default function Dashboard() {
-  const { user } = useAuth();
-  const [vendas,   setVendas]   = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(false);
-  const [anoFilt,  setAnoFilt]  = useState(new Date().getFullYear());
+  const { user }                        = useAuth();
+  const { mkVendas }                    = useMarketplace();   // ← vendas do Marketplace
+  const [apiVendas,   setApiVendas]     = useState([]);
+  const [produtos,    setProdutos]      = useState([]);
+  const [loading,     setLoading]       = useState(true);
+  const [error,       setError]         = useState(false);
+  const [anoFilt,     setAnoFilt]       = useState(new Date().getFullYear());
 
   const nomeExibido = (user?.name || user?.username || user?.email?.split('@')[0] || 'usuário').split(' ')[0];
 
   useEffect(() => {
     Promise.all([vendaService.listar(), produtoService.listar()])
-      .then(([v, p]) => { setVendas(v.data || []); setProdutos(p.data || []); })
+      .then(([v, p]) => { setApiVendas(v.data || []); setProdutos(p.data || []); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
-  // ── KPIs ────────────────────────────────────────────────
+  // ── Mescla vendas da API + vendas do Marketplace ─────────────────────────────
+  const vendas = useMemo(() => [...apiVendas, ...mkVendas], [apiVendas, mkVendas]);
+
+  // ── KPIs ─────────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
     const now      = new Date();
     const hoje     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -280,10 +205,10 @@ export default function Dashboard() {
     const vendasMes  = vendas.filter(v => { const d = new Date(v.data); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; });
     const vendasHoje = vendas.filter(v => new Date(v.data) >= hoje);
 
-    const somaV = (a) => a.reduce((s, v) => s + (parseFloat(v.valorVenda) || 0), 0);
-    const somaC = (a) => a.reduce((s, v) => s + calculos(v).custoCheio, 0);
-    const somaF = (a) => a.reduce((s, v) => s + calculos(v).frete, 0);
-    const somaM = (a) => a.reduce((s, v) => s + calculos(v).margem, 0);
+    const somaV = (a) => a.reduce((s, v) => s + (parseFloat(v.valorVenda)       || 0), 0);
+    const somaC = (a) => a.reduce((s, v) => s + calculos(v).custoCheio,               0);
+    const somaF = (a) => a.reduce((s, v) => s + calculos(v).frete,                    0);
+    const somaM = (a) => a.reduce((s, v) => s + calculos(v).margem,                   0);
 
     const renda  = somaV(vendasMes);
     const custo  = somaC(vendasMes);
@@ -292,19 +217,19 @@ export default function Dashboard() {
 
     return {
       renda,
-      lucroMesPct:         renda ? (margem / renda) * 100 : 0,
-      margemValor:         margem,
-      custoPct:            renda ? (custo  / renda) * 100 : 0,
-      custoValor:          custo,
-      custoPorEntregaPct:  renda ? (frete  / renda) * 100 : 0,
-      custoPorEntrega:     vendasMes.length ? frete / vendasMes.length : 0,
-      rendaHoje:           somaV(vendasHoje),
-      qtdHoje:             vendasHoje.length,
-      totalMes:            vendasMes.length,
+      lucroMesPct:        renda ? (margem / renda) * 100 : 0,
+      margemValor:        margem,
+      custoPct:           renda ? (custo  / renda) * 100 : 0,
+      custoValor:         custo,
+      custoPorEntregaPct: renda ? (frete  / renda) * 100 : 0,
+      custoPorEntrega:    vendasMes.length ? frete / vendasMes.length : 0,
+      rendaHoje:          somaV(vendasHoje),
+      qtdHoje:            vendasHoje.length,
+      totalMes:           vendasMes.length,
     };
   }, [vendas]);
 
-  // ── Top produtos ─────────────────────────────────────────
+  // ── Top produtos ──────────────────────────────────────────────────────────────
   const topProdutos = useMemo(() => {
     const map = {};
     vendas.forEach(v => {
@@ -318,7 +243,7 @@ export default function Dashboard() {
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 4);
   }, [vendas]);
 
-  // ── Marketplace ──────────────────────────────────────────
+  // ── Marketplace donut ─────────────────────────────────────────────────────────
   const marketplace = useMemo(() => {
     const map = {};
     vendas.forEach(v => {
@@ -331,7 +256,7 @@ export default function Dashboard() {
     }));
   }, [vendas]);
 
-  // ── Evolução mensal ──────────────────────────────────────
+  // ── Evolução mensal ───────────────────────────────────────────────────────────
   const anos = useMemo(() => {
     const s = new Set(vendas.map(v => new Date(v.data).getFullYear()));
     return [...s].sort((a, b) => b - a);
@@ -348,7 +273,7 @@ export default function Dashboard() {
 
   const maxBar = Math.max(...topProdutos.map(p => Math.max(p.shopee, p.ml)), 1);
 
-  // ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
   if (loading) return (
     <div>
       <Topbar title="Dashboard" subtitle="Carregando dados…" />
@@ -364,7 +289,12 @@ export default function Dashboard() {
       <div className="card" style={{ textAlign: 'center', padding: 48 }}>
         <AlertTriangle size={32} color="var(--warning)" style={{ marginBottom: 12 }} />
         <h3>Sem conexão com a API</h3>
-        <p style={{ color: 'var(--text2)', marginTop: 6 }}>Verifique se o backend está rodando em <code>localhost:8080</code></p>
+        <p style={{ color: 'var(--text2)', marginTop: 6 }}>
+          Verifique se o backend está rodando em <code>localhost:8080</code>
+        </p>
+        <p style={{ color: 'var(--text3)', marginTop: 8, fontSize: 13 }}>
+          Os dados do Marketplace continuam disponíveis abaixo.
+        </p>
       </div>
     </div>
   );
@@ -373,16 +303,34 @@ export default function Dashboard() {
     <div>
       <Topbar title={`Olá, ${nomeExibido} 👋`} subtitle="Aqui está o resumo do seu negócio" />
 
-      {/* ── KPI Cards ── */}
+      {/* Indicador de dados do Marketplace */}
+      {mkVendas.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          marginBottom: 16,
+          padding: '8px 14px',
+          background: 'var(--primary-dim)',
+          border: '1px solid var(--border)',
+          borderRadius: 8, fontSize: 12.5, color: 'var(--text2)',
+        }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />
+          <span>
+            <strong style={{ color: 'var(--text)' }}>{mkVendas.length}</strong> vendas do Marketplace
+            (ML + Shopee) incluídas nos indicadores abaixo.
+          </span>
+        </div>
+      )}
+
+      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}           sub={`${kpis.totalMes} pedido(s) no mês`}    accentColor="#2ec98a" />
-        <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}  sub={fmt(kpis.margemValor)}                  accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'} />
-        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}     sub={fmt(kpis.custoValor)}                   accentColor="#f05365" />
-        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`} accentColor="#FFBA42" />
-        <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}       sub={`${kpis.qtdHoje} pedido(s)`}            accentColor="#A8E8F9" />
+        <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}                sub={`${kpis.totalMes} pedido(s) no mês`}         accentColor="#2ec98a" />
+        <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}       sub={fmt(kpis.margemValor)}                       accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'} />
+        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}          sub={fmt(kpis.custoValor)}                        accentColor="#f05365" />
+        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`}    accentColor="#FFBA42" />
+        <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}            sub={`${kpis.qtdHoje} pedido(s)`}                 accentColor="#A8E8F9" />
       </div>
 
-      {/* ── Gráficos linha 1 ── */}
+      {/* Gráficos */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginBottom: 16 }}>
 
         {/* Produtos Mais Lucrativos */}
@@ -446,7 +394,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Evolução de Faturamento ── */}
+      {/* Evolução de Faturamento */}
       <div className="chart-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -475,7 +423,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── Nota APIs ── */}
       <div style={{
         padding: '12px 16px', background: 'var(--primary-dim)',
         border: '1px solid var(--border)', borderRadius: 10,
@@ -484,7 +431,9 @@ export default function Dashboard() {
       }}>
         <TrendingUp size={14} color="var(--primary)" />
         <span>
-          Dados de <strong style={{ color: 'var(--text)' }}>Shopee</strong> e <strong style={{ color: 'var(--text)' }}>Mercado Livre</strong> serão integrados automaticamente quando as APIs externas estiverem configuradas.
+          Dados de <strong style={{ color: 'var(--text)' }}>Shopee</strong> e{' '}
+          <strong style={{ color: 'var(--text)' }}>Mercado Livre</strong> integrados via{' '}
+          Marketplace · vendas da API backend também incluídas quando disponíveis.
         </span>
       </div>
     </div>

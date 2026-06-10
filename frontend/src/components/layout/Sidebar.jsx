@@ -1,22 +1,24 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Building2, Truck, Package, LogOut, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, Truck, Package, LogOut, ShoppingBag, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useMarketplace } from '../../context/MarketplaceContext';
 import logo_outlet from '../../assets/images/logo_outlet.png';
 
 const links = [
-  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },  // ✅ era "/"
-  { to: '/vendas',       label: 'Vendas',        icon: ShoppingBag },      // ✅ era Building2
-  { to: '/fornecedores', label: 'Fornecedores',  icon: Truck },
-  { to: '/produtos',     label: 'Produtos',      icon: Package }
+  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/vendas',       label: 'Vendas',       icon: ShoppingBag     },
+  { to: '/fornecedores', label: 'Fornecedores', icon: Truck           },
+  { to: '/produtos',     label: 'Produtos',     icon: Package         },
+  { to: '/marketplace',  label: 'Marketplace',  icon: Store           },
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, logout }        = useAuth();
+  const { semEstoqueCount }     = useMarketplace();
+  const navigate                = useNavigate();
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  // ✅ fallback para name, username ou email
   const nomeExibido = user?.name || user?.username || user?.email?.split('@')[0] || 'Usuário';
   const roleExibido = user?.role || '';
 
@@ -47,6 +49,15 @@ export default function Sidebar() {
           >
             <Icon size={16} />
             {label}
+            {/* Badge de alerta para estoque zerado no Marketplace */}
+            {to === '/marketplace' && semEstoqueCount > 0 && (
+              <span className="nav-badge" style={{
+                background: 'var(--danger-dim)',
+                color: 'var(--danger)',
+              }}>
+                {semEstoqueCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -54,7 +65,7 @@ export default function Sidebar() {
       <div className="sidebar-footer">
         <div style={{ padding: '8px 10px', marginBottom: 4 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--sidebar-text, var(--text))' }}>
-            {nomeExibido}  {/* ✅ com fallback */}
+            {nomeExibido}
           </div>
           {roleExibido && (
             <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>
