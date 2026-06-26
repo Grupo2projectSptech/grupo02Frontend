@@ -27,7 +27,7 @@ const calculos = (f) => {
 
 const EMPTY = {
   data: new Date().toISOString().slice(0, 10),
-  nomeProduto: '', tipo: 'Shopee', produto: '',
+  nomeProduto: '', tipo: 'Shopee', produto: null,  // ✅ era '' — backend espera objeto ou null
   quantidade: '', custoUnidade: '', valorVenda: '', idPedido: '',
   motoboy: '', freteFlex: '', freteVenda: '',
   tarifa: '', imposto: '', operacional: '',
@@ -123,12 +123,20 @@ export default function Vendas() {
     setSaving(true);
     try {
       const c = calculos(form);
+
+      // ✅ monta produto como objeto { id } só se houver um produto selecionado,
+      //    nunca envia string vazia (quebrava a deserialização no backend)
+      const produtoRef = form.produto
+        ? { id: typeof form.produto === 'object' ? form.produto.id : parseInt(form.produto) }
+        : null;
+
       const payload = {
         ...form,
+        produto: produtoRef, // ✅ nunca mais string vazia
         custoTotal: c.custoTotal, freteDiff: c.freteDiff,
         impostoValor: c.impostoValor, custoCheio: c.custoCheio,
         margem: c.margem, margemPct: c.margemPct,
-        nomeProduto: form.nomeProduto || produtos.find(p => p.id === form.produto)?.nome || '',
+        nomeProduto: form.nomeProduto || produtos.find(p => p.id === produtoRef?.id)?.nome || '',
       };
       await vendaService.criar(payload);
       toast.success('Venda cadastrada!');

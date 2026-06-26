@@ -15,29 +15,29 @@ const SCHEMA = {
 const EMPTY = {
   nome: '', descricao: '', preco: '', estoque: 0,
   categoria: '', codigoInterno: '', unidade: 'UN',
-  ativo: true, fornecedor: null, empresa: null,
+  ativo: true, fornecedor: null, // ✅ sem "empresa" — campo removido do model
 };
 
 export default function Produtos() {
-  const [items,       setItems]       = useState([]);
+  const [items,        setItems]        = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [search,      setSearch]      = useState('');
-  const [filterLow,   setFilterLow]   = useState(false);
-  const [modal,       setModal]       = useState(false);
-  const [editing,     setEditing]     = useState(null);
-  const [form,        setForm]        = useState(EMPTY);
-  const [errors,      setErrors]      = useState({});
-  const [saving,      setSaving]      = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState('');
+  const [filterLow,    setFilterLow]    = useState(false);
+  const [modal,        setModal]        = useState(false);
+  const [editing,      setEditing]      = useState(null);
+  const [form,         setForm]         = useState(EMPTY);
+  const [errors,       setErrors]       = useState({});
+  const [saving,       setSaving]       = useState(false);
 
   // ── Load ──────────────────────────────────────────────
   const load = () => {
     setLoading(true);
     Promise.all([
-      produtoService.listar(),     // ✅
-      fornecedorService.listar(),  // ✅
+      produtoService.listar(),
+      fornecedorService.listar(),
     ])
-      .then(([p, f, e]) => {
+      .then(([p, f]) => {
         setItems(p.data);
         setFornecedores(f.data);
       })
@@ -61,7 +61,7 @@ export default function Produtos() {
       ...item,
       preco:      item.preco,
       fornecedor: item.fornecedor ? { id: item.fornecedor.id } : null,
-      empresa:    item.empresa    ? { id: item.empresa.id    } : null,
+      // ✅ sem empresa — não existe mais no model do backend
     });
     setErrors({});
     setModal(true);
@@ -81,22 +81,27 @@ export default function Produtos() {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
     try {
+      // ✅ remove qualquer campo fantasma (ex: empresa) antes de enviar
+      const { empresa, ...rest } = form;
+
       const payload = {
-        ...form,
-        preco:   parseFloat(form.preco),
+        ...rest,
+        // ✅ aceita tanto "10.50" quanto "10,50" digitado pelo usuário
+        preco:   parseFloat(String(form.preco).replace(',', '.')),
         estoque: parseInt(form.estoque) || 0,
       };
+
       if (editing) {
-        await produtoService.atualizar(editing.id, payload); // ✅
+        await produtoService.atualizar(editing.id, payload);
         toast.success('Produto atualizado!');
       } else {
-        await produtoService.criar(payload);                 // ✅
+        await produtoService.criar(payload);
         toast.success('Produto cadastrado!');
       }
       closeModal();
       load();
     } catch (err) {
-      toast.error(err.message || 'Erro ao salvar produto');  // ✅ fallback
+      toast.error(err.message || 'Erro ao salvar produto');
     } finally {
       setSaving(false);
     }
@@ -104,9 +109,9 @@ export default function Produtos() {
 
   // ── Delete ────────────────────────────────────────────
   const handleDelete = async (id) => {
-    if (!window.confirm('Excluir este produto?')) return;    // ✅ window.confirm
+    if (!window.confirm('Excluir este produto?')) return;
     try {
-      await produtoService.deletar(id);                      // ✅
+      await produtoService.deletar(id);
       toast.success('Removido!');
       load();
     } catch (err) {
@@ -188,7 +193,6 @@ export default function Produtos() {
                   <th>Preço</th>
                   <th>Estoque</th>
                   <th>Fornecedor</th>
-                  <th>Empresa</th>
                   <th>Status</th>
                   <th>Ações</th>
                 </tr>
@@ -229,9 +233,6 @@ export default function Produtos() {
                     </td>
                     <td style={{ color: 'var(--text2)' }}>
                       {item.fornecedor?.nome || <span style={{ color: 'var(--text3)' }}>—</span>}
-                    </td>
-                    <td style={{ color: 'var(--text2)', fontSize: 12.5 }}>
-                      {item.empresa?.razaoSocial || <span style={{ color: 'var(--text3)' }}>—</span>}
                     </td>
                     <td>
                       <span className={`badge ${item.ativo ? 'badge-active' : 'badge-inactive'}`}>
@@ -320,9 +321,10 @@ export default function Produtos() {
                     type="number"
                     min="0"
                     step="0.01"
+                    inputMode="decimal"
                     value={form.preco}
                     onChange={e => setField('preco', e.target.value)}
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                   {errors.preco && <div className="field-error">{errors.preco}</div>}
                 </div>
@@ -364,25 +366,19 @@ export default function Produtos() {
                 </div>
               </div>
 
-              {/* Fornecedor + Empresa */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Fornecedor</label>
-                  <select
-                    className="form-select"
-                    value={form.fornecedor?.id || ''}
-                    onChange={e => setField('fornecedor', e.target.value ? { id: parseInt(e.target.value) } : null)}
-                  >
-                    <option value="">Selecione…</option>
-                    {fornecedores.map(f => (
-                      <option key={f.id} value={f.id}>{f.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Empresa</label>
-
-                </div>
+              {/* Fornecedor */}
+              <div className="form-group">
+                <label className="form-label">Fornecedor</label>
+                <select
+                  className="form-select"
+                  value={form.fornecedor?.id || ''}
+                  onChange={e => setField('fornecedor', e.target.value ? { id: parseInt(e.target.value) } : null)}
+                >
+                  <option value="">Selecione…</option>
+                  {fornecedores.map(f => (
+                    <option key={f.id} value={f.id}>{f.nome}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Status */}
