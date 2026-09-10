@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, FileText } from 'lucide-react';
+import { Plus, X, FileText, FileSpreadsheet } from 'lucide-react';
 import { fornecedorService, produtoService } from '../services/api';
 import { validators, validateForm } from '../utils/validators';
 import { formatCNPJ, formatPhone } from '../utils/formatters';
+import ImportacaoModal from '../components/ImportacaoModal'; // ✅ caminho correto sem typo
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
 import FornecedorRow from '../components/fornecedores/FornecedorRow';
@@ -36,17 +37,12 @@ export default function Fornecedores() {
   const [form,        setForm]        = useState(EMPTY);
   const [errors,      setErrors]      = useState({});
   const [saving,      setSaving]      = useState(false);
+  const [importModal, setImportModal] = useState(false);
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      fornecedorService.listar(),  // ✅ corrigido de getAll()
-      produtoService.listar(),     // ✅ corrigido de getAll()
-    ])
-      .then(([f, p]) => {
-        setItems(f.data);
-        setAllProdutos(p.data);
-      })
+    Promise.all([fornecedorService.listar(), produtoService.listar()])
+      .then(([f, p]) => { setItems(f.data); setAllProdutos(p.data); })
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoading(false));
   };
@@ -69,10 +65,10 @@ export default function Fornecedores() {
     setSaving(true);
     try {
       if (editing) {
-        await fornecedorService.atualizar(editing.id, form); // ✅ corrigido de update()
+        await fornecedorService.atualizar(editing.id, form);
         toast.success('Fornecedor atualizado!');
       } else {
-        await fornecedorService.criar(form);                 // ✅ corrigido de create()
+        await fornecedorService.criar(form);
         toast.success('Fornecedor cadastrado!');
       }
       closeModal();
@@ -85,9 +81,9 @@ export default function Fornecedores() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Excluir este fornecedor?')) return; // ✅ window.confirm
+    if (!window.confirm('Excluir este fornecedor?')) return;
     try {
-      await fornecedorService.deletar(id);                   // ✅ corrigido de delete()
+      await fornecedorService.deletar(id);
       toast.success('Removido!');
       load();
     } catch (err) {
@@ -103,11 +99,15 @@ export default function Fornecedores() {
 
   return (
     <div>
+      {/* ✅ Topbar com todos os botões corretamente no actions */}
       <Topbar
         title="Fornecedores"
         subtitle={`${items.length} fornecedor(es) cadastrado(s)`}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setImportModal(true)}>
+              <FileSpreadsheet size={15} /> Importar Planilha
+            </button>
             <button
               className={`btn ${showReport ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setShowReport(r => !r)}
@@ -130,12 +130,8 @@ export default function Fornecedores() {
             <svg className="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input
-              className="search-input"
-              placeholder="Buscar fornecedor…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <input className="search-input" placeholder="Buscar fornecedor…"
+              value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>{filtered.length} resultado(s)</div>
         </div>
@@ -153,25 +149,14 @@ export default function Fornecedores() {
             <table>
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>CNPJ</th>
-                  <th>Contato</th>
-                  <th>Telefone</th>
-                  <th>Categoria</th>
-                  <th>Cidade / UF</th>
-                  <th>Status</th>
-                  <th>Ações</th>
+                  <th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th>
+                  <th>Categoria</th><th>Cidade / UF</th><th>Status</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(item => (
-                  <FornecedorRow
-                    key={item.id}
-                    item={item}
-                    onEdit={openEdit}
-                    onDelete={handleDelete}
-                    allProdutos={allProdutos}
-                  />
+                  <FornecedorRow key={item.id} item={item}
+                    onEdit={openEdit} onDelete={handleDelete} allProdutos={allProdutos} />
                 ))}
               </tbody>
             </table>
@@ -179,64 +164,41 @@ export default function Fornecedores() {
         )}
       </div>
 
-      {/* Painel de relatório */}
-      {showReport && (
-        <ReportPanel fornecedores={items} allProdutos={allProdutos} />
-      )}
+      {showReport && <ReportPanel fornecedores={items} allProdutos={allProdutos} />}
 
-      {/* Modal */}
+      {/* Modal cadastro/edição */}
       {modal && (
         <div className="overlay" onClick={closeModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar Fornecedor' : 'Novo Fornecedor'}</h2>
-              <button className="btn btn-ghost btn-icon" onClick={closeModal}>
-                <X size={16} />
-              </button>
+              <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
             </div>
-
             <form onSubmit={handleSubmit} noValidate>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Nome *</label>
-                  <input
-                    className={`form-input${errors.nome ? ' error' : ''}`}
-                    value={form.nome}
-                    onChange={e => setField('nome', e.target.value)}
-                    placeholder="Nome do fornecedor"
-                  />
+                  <input className={`form-input${errors.nome ? ' error' : ''}`} value={form.nome}
+                    onChange={e => setField('nome', e.target.value)} placeholder="Nome do fornecedor" />
                   {errors.nome && <div className="field-error">{errors.nome}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">CNPJ</label>
-                  <input
-                    className="form-input"
-                    value={form.cnpj}
-                    onChange={e => setField('cnpj', formatCNPJ(e.target.value))}
-                    placeholder="00.000.000/0001-00"
-                  />
+                  <input className="form-input" value={form.cnpj}
+                    onChange={e => setField('cnpj', formatCNPJ(e.target.value))} placeholder="00.000.000/0001-00" />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Contato</label>
-                  <input
-                    className="form-input"
-                    value={form.contato}
-                    onChange={e => setField('contato', e.target.value)}
-                    placeholder="Nome do responsável"
-                  />
+                  <input className="form-input" value={form.contato}
+                    onChange={e => setField('contato', e.target.value)} placeholder="Nome do responsável" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Email</label>
-                  <input
-                    className={`form-input${errors.email ? ' error' : ''}`}
-                    type="email"
-                    value={form.email}
-                    onChange={e => setField('email', e.target.value)}
-                    placeholder="email@fornecedor.com"
-                  />
+                  <input className={`form-input${errors.email ? ' error' : ''}`} type="email"
+                    value={form.email} onChange={e => setField('email', e.target.value)} placeholder="email@fornecedor.com" />
                   {errors.email && <div className="field-error">{errors.email}</div>}
                 </div>
               </div>
@@ -244,50 +206,30 @@ export default function Fornecedores() {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Telefone</label>
-                  <input
-                    className="form-input"
-                    value={form.telefone}
-                    onChange={e => setField('telefone', formatPhone(e.target.value))}
-                    placeholder="(11) 99999-9999"
-                  />
+                  <input className="form-input" value={form.telefone}
+                    onChange={e => setField('telefone', formatPhone(e.target.value))} placeholder="(11) 99999-9999" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Categoria</label>
-                  <input
-                    className="form-input"
-                    value={form.categoria}
-                    onChange={e => setField('categoria', e.target.value)}
-                    placeholder="Ex: Eletrônicos, Alimentos…"
-                  />
+                  <input className="form-input" value={form.categoria}
+                    onChange={e => setField('categoria', e.target.value)} placeholder="Ex: Eletrônicos, Alimentos…" />
                 </div>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Endereço</label>
-                <input
-                  className="form-input"
-                  value={form.endereco}
-                  onChange={e => setField('endereco', e.target.value)}
-                  placeholder="Endereço completo"
-                />
+                <input className="form-input" value={form.endereco}
+                  onChange={e => setField('endereco', e.target.value)} placeholder="Endereço completo" />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Cidade</label>
-                  <input
-                    className="form-input"
-                    value={form.cidade}
-                    onChange={e => setField('cidade', e.target.value)}
-                  />
+                  <input className="form-input" value={form.cidade} onChange={e => setField('cidade', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Estado</label>
-                  <select
-                    className="form-select"
-                    value={form.estado}
-                    onChange={e => setField('estado', e.target.value)}
-                  >
+                  <select className="form-select" value={form.estado} onChange={e => setField('estado', e.target.value)}>
                     <option value="">—</option>
                     {UFS.map(s => <option key={s}>{s}</option>)}
                   </select>
@@ -296,20 +238,15 @@ export default function Fornecedores() {
 
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <select
-                  className="form-select"
-                  value={form.ativo ? 'true' : 'false'}
-                  onChange={e => setField('ativo', e.target.value === 'true')}
-                >
+                <select className="form-select" value={form.ativo ? 'true' : 'false'}
+                  onChange={e => setField('ativo', e.target.value === 'true')}>
                   <option value="true">Ativo</option>
                   <option value="false">Inativo</option>
                 </select>
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={closeModal}>
-                  Cancelar
-                </button>
+                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Salvando…' : editing ? 'Salvar Alterações' : 'Cadastrar'}
                 </button>
@@ -317,6 +254,14 @@ export default function Fornecedores() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ✅ Modal de importação — irmão do modal de cadastro, nunca dentro dele */}
+      {importModal && (
+        <ImportacaoModal
+          onClose={() => setImportModal(false)}
+          onSuccess={() => { setImportModal(false); load(); }}
+        />
       )}
     </div>
   );

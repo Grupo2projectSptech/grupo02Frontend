@@ -325,8 +325,8 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
         <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}                sub={`${kpis.totalMes} pedido(s) no mês`}         accentColor="#2ec98a" />
         <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}       sub={fmt(kpis.margemValor)}                       accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'} />
-        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}          sub={fmt(kpis.custoValor)}                        accentColor="#f05365" />
-        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`}    accentColor="#FFBA42" />
+        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}          sub={fmt(kpis.custoValor)}                        accentColor="#A8E8F9" />
+        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`}    accentColor="#A8E8F9" />
         <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}            sub={`${kpis.qtdHoje} pedido(s)`}                 accentColor="#A8E8F9" />
       </div>
 

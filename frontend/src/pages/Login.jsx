@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { validators } from '../utils/validators';
 import { userService } from '../services/api';
 import icone from '../assets/images/icone_outlet.png';
-import "../app.css";
+import "../App.css";
 import "../index.css";
 
 export default function Login() {

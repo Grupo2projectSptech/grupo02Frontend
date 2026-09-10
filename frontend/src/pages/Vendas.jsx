@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, X, Search, ShoppingBag, TrendingUp, DollarSign, Package } from 'lucide-react';
+import { Plus, X, ShoppingBag, TrendingUp, DollarSign, Package, FileSpreadsheet } from 'lucide-react';
 import { vendaService, produtoService } from '../services/api';
 import { useMarketplace } from '../context/MarketplaceContext';
+import ImportacaoModal from '../components/ImportacaoModal';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
 
@@ -27,7 +28,7 @@ const calculos = (f) => {
 
 const EMPTY = {
   data: new Date().toISOString().slice(0, 10),
-  nomeProduto: '', tipo: 'Shopee', produto: null,  // ✅ era '' — backend espera objeto ou null
+  nomeProduto: '', tipo: 'Shopee', produto: null,
   quantidade: '', custoUnidade: '', valorVenda: '', idPedido: '',
   motoboy: '', freteFlex: '', freteVenda: '',
   tarifa: '', imposto: '', operacional: '',
@@ -43,19 +44,20 @@ const PERIODOS = [
 
 // ─── Componente principal ────────────────────────────────
 export default function Vendas() {
-  const { mkVendas }           = useMarketplace();   // ← vendas do Marketplace
-  const [apiItems, setApiItems] = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [form,     setForm]     = useState(EMPTY);
-  const [errors,   setErrors]   = useState({});
+  const { mkVendas }            = useMarketplace();
+  const [apiItems,  setApiItems]  = useState([]);
+  const [produtos,  setProdutos]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [modal,     setModal]     = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [form,      setForm]      = useState(EMPTY);
+  const [errors,    setErrors]    = useState({});
+  const [importModal, setImportModal] = useState(false); // ✅ estado do modal de importação
 
   const [search,  setSearch]  = useState('');
   const [tipo,    setTipo]    = useState('all');
   const [periodo, setPeriodo] = useState('all');
-  const [origem,  setOrigem]  = useState('all'); // all | api | marketplace
+  const [origem,  setOrigem]  = useState('all');
 
   const load = () => {
     setLoading(true);
@@ -67,7 +69,7 @@ export default function Vendas() {
 
   useEffect(() => { load(); }, []);
 
-  // Mescla API + Marketplace com flag de origem
+  // Mescla API + Marketplace
   const allItems = useMemo(() => [
     ...apiItems.map(i => ({ ...i, _source: 'api' })),
     ...mkVendas.map(i => ({ ...i, _source: 'marketplace' })),
@@ -77,21 +79,18 @@ export default function Vendas() {
   const filtered = useMemo(() => {
     const now   = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
     return allItems.filter(i => {
-      const q = search.toLowerCase();
-      const matchSearch  = !q || (i.nomeProduto || '').toLowerCase().includes(q) || (i.idPedido || '').toLowerCase().includes(q) || (i.tipo || '').toLowerCase().includes(q);
-      const matchTipo    = tipo === 'all' || i.tipo === tipo;
-      const matchOrigem  = origem === 'all' || i._source === origem;
-
-      let matchPeriodo = true;
+      const q           = search.toLowerCase();
+      const matchSearch = !q || (i.nomeProduto || '').toLowerCase().includes(q) || (i.idPedido || '').toLowerCase().includes(q) || (i.tipo || '').toLowerCase().includes(q);
+      const matchTipo   = tipo   === 'all' || i.tipo    === tipo;
+      const matchOrigem = origem === 'all' || i._source === origem;
+      let matchPeriodo  = true;
       if (periodo !== 'all' && i.data) {
         const d = new Date(i.data);
         if (periodo === 'today') matchPeriodo = d >= today;
         if (periodo === 'week')  matchPeriodo = d >= new Date(today - 6 * 864e5);
         if (periodo === 'month') matchPeriodo = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       }
-
       return matchSearch && matchTipo && matchOrigem && matchPeriodo;
     });
   }, [allItems, search, tipo, periodo, origem]);
@@ -123,20 +122,16 @@ export default function Vendas() {
     setSaving(true);
     try {
       const c = calculos(form);
-
-      // ✅ monta produto como objeto { id } só se houver um produto selecionado,
-      //    nunca envia string vazia (quebrava a deserialização no backend)
       const produtoRef = form.produto
         ? { id: typeof form.produto === 'object' ? form.produto.id : parseInt(form.produto) }
         : null;
-
       const payload = {
         ...form,
-        produto: produtoRef, // ✅ nunca mais string vazia
-        custoTotal: c.custoTotal, freteDiff: c.freteDiff,
-        impostoValor: c.impostoValor, custoCheio: c.custoCheio,
-        margem: c.margem, margemPct: c.margemPct,
-        nomeProduto: form.nomeProduto || produtos.find(p => p.id === produtoRef?.id)?.nome || '',
+        produto:      produtoRef,
+        custoTotal:   c.custoTotal,   freteDiff:    c.freteDiff,
+        impostoValor: c.impostoValor, custoCheio:   c.custoCheio,
+        margem:       c.margem,       margemPct:    c.margemPct,
+        nomeProduto:  form.nomeProduto || produtos.find(p => p.id === produtoRef?.id)?.nome || '',
       };
       await vendaService.criar(payload);
       toast.success('Venda cadastrada!');
@@ -154,20 +149,26 @@ export default function Vendas() {
   // ─────────────────────────────────────────────────────
   return (
     <div>
+      {/* Topbar */}
       <Topbar
         title="Vendas"
         subtitle={`${allItems.length} venda(s) · ${apiItems.length} da API · ${mkVendas.length} do Marketplace`}
         actions={
-          <button className="btn btn-primary" onClick={openModal}>
-            <Plus size={15} /> Nova Venda
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setImportModal(true)}>
+              <FileSpreadsheet size={15} /> Importar Planilha
+            </button>
+            <button className="btn btn-primary" onClick={openModal}>
+              <Plus size={15} /> Nova Venda
+            </button>
+          </div>
         }
       />
 
       {/* Cards de totais */}
       <div className="stat-grid" style={{ marginBottom: 16 }}>
         {[
-          { label: 'Total Vendido',  value: fmt(totais.vendas), icon: DollarSign, color: 'var(--success)', dim: 'var(--success-dim)' },
+          { label: 'Total Vendido',  value: fmt(totais.vendas), icon: DollarSign,  color: 'var(--success)', dim: 'var(--success-dim)' },
           { label: 'Custo Total',    value: fmt(totais.custo),  icon: ShoppingBag, color: 'var(--danger)',  dim: 'var(--danger-dim)'  },
           { label: 'Margem Total',   value: fmt(totais.margem), icon: TrendingUp,  color: 'var(--primary)', dim: 'var(--primary-dim)' },
           { label: 'Itens Vendidos', value: totais.qtd,         icon: Package,     color: 'var(--info)',    dim: 'var(--info-dim)'    },
@@ -208,7 +209,6 @@ export default function Vendas() {
             {PERIODOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
 
-          {/* Filtro de origem — novo */}
           <select className="form-select" style={{ width: 'auto', minWidth: 150 }}
             value={origem} onChange={e => setOrigem(e.target.value)}>
             <option value="all">Todas as origens</option>
@@ -270,8 +270,10 @@ export default function Vendas() {
                         }`}>{i.tipo}</span>
                       </td>
                       <td>
-                        <span className={`badge ${i._source === 'marketplace' ? 'badge-info' : 'badge-inactive'}`}
-                          style={{ fontSize: 10 }}>
+                        <span
+                          className={`badge ${i._source === 'marketplace' ? 'badge-info' : 'badge-inactive'}`}
+                          style={{ fontSize: 10 }}
+                        >
                           {i._source === 'marketplace' ? 'Marketplace' : 'API'}
                         </span>
                       </td>
@@ -302,13 +304,17 @@ export default function Vendas() {
       {/* Modal Nova Venda */}
       {modal && (
         <div className="overlay" onClick={closeModal}>
-          <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}>
+          <div
+            className="modal"
+            style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="modal-header">
               <h2>Nova Venda</h2>
               <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
             </div>
             <form onSubmit={handleSubmit} noValidate>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Data *</label>
@@ -332,9 +338,12 @@ export default function Vendas() {
               <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
                   <label className="form-label">Produto *</label>
-                  <input className={`form-input${errors.nomeProduto ? ' error' : ''}`}
+                  <input
+                    className={`form-input${errors.nomeProduto ? ' error' : ''}`}
                     placeholder="Nome do produto vendido"
-                    value={form.nomeProduto} onChange={e => setField('nomeProduto', e.target.value)} />
+                    value={form.nomeProduto}
+                    onChange={e => setField('nomeProduto', e.target.value)}
+                  />
                   {errors.nomeProduto && <div className="field-error">{errors.nomeProduto}</div>}
                 </div>
                 <div className="form-group">
@@ -396,7 +405,11 @@ export default function Vendas() {
               </div>
 
               {(form.valorVenda || form.custoUnidade) && (
-                <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <div style={{
+                  background: 'var(--bg3)', border: '1px solid var(--border)',
+                  borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+                }}>
                   {[
                     ['Custo Total',     fmt(preview.custoTotal)],
                     ['Custo Cheio',     fmt(preview.custoCheio)],
@@ -407,7 +420,12 @@ export default function Vendas() {
                   ].map(([label, value]) => (
                     <div key={label}>
                       <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontWeight: 600, color: label.includes('Margem') ? (preview.margem >= 0 ? 'var(--success)' : 'var(--danger)') : 'var(--text)' }}>
+                      <div style={{
+                        fontWeight: 600,
+                        color: label.includes('Margem')
+                          ? (preview.margem >= 0 ? 'var(--success)' : 'var(--danger)')
+                          : 'var(--text)',
+                      }}>
                         {value}
                       </div>
                     </div>
@@ -424,6 +442,14 @@ export default function Vendas() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ✅ Modal de importação de planilha */}
+      {importModal && (
+        <ImportacaoModal
+          onClose={() => setImportModal(false)}
+          onSuccess={() => { setImportModal(false); load(); }}
+        />
       )}
     </div>
   );
