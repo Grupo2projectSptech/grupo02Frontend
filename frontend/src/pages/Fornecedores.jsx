@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, FileText, FileSpreadsheet } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, X, FileText, FileSpreadsheet, Search, Loader } from 'lucide-react';
 import { fornecedorService, produtoService } from '../services/api';
 import { validators, validateForm } from '../utils/validators';
-import { formatCNPJ, formatPhone } from '../utils/formatters';
-import ImportacaoModal from '../components/ImportacaoModal'; // ✅ caminho correto sem typo
+import { formatCNPJ, formatPhone, formatCEP } from '../utils/formatters';
+import ImportacaoModal from '../components/ImportacaoModal';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
 import FornecedorRow from '../components/fornecedores/FornecedorRow';
@@ -16,7 +16,7 @@ const SCHEMA = {
 
 const EMPTY = {
   nome: '', cnpj: '', contato: '', email: '',
-  telefone: '', endereco: '', cidade: '', estado: '',
+  telefone: '', cep: '', endereco: '', bairro: '', cidade: '', estado: '',
   categoria: '', ativo: true,
 };
 
@@ -25,6 +25,39 @@ const UFS = [
   'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
   'RS','RO','RR','SC','SP','SE','TO',
 ];
+
+// ── Hook ViaCEP inline ────────────────────────────────────
+function useViaCep() {
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [erroCep,    setErroCep]    = useState('');
+
+  const buscarCep = useCallback(async (cep) => {
+    const cepLimpo = String(cep).replace(/\D/g, '');
+    if (cepLimpo.length !== 8) { setErroCep('CEP deve ter 8 dígitos'); return null; }
+
+    setLoadingCep(true);
+    setErroCep('');
+    try {
+      const res  = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (data.erro) { setErroCep('CEP não encontrado'); return null; }
+      return {
+        cep:        data.cep        || '',
+        endereco:   data.logradouro || '',
+        bairro:     data.bairro     || '',
+        cidade:     data.localidade || '',
+        estado:     data.uf         || '',
+      };
+    } catch {
+      setErroCep('Erro ao buscar CEP. Verifique sua conexão.');
+      return null;
+    } finally {
+      setLoadingCep(false);
+    }
+  }, []);
+
+  return { buscarCep, loadingCep, erroCep, limparErroCep: () => setErroCep('') };
+}
 
 export default function Fornecedores() {
   const [items,       setItems]       = useState([]);
@@ -38,6 +71,8 @@ export default function Fornecedores() {
   const [errors,      setErrors]      = useState({});
   const [saving,      setSaving]      = useState(false);
   const [importModal, setImportModal] = useState(false);
+
+  const { buscarCep, loadingCep, erroCep, limparErroCep } = useViaCep();
 
   const load = () => {
     setLoading(true);
@@ -56,6 +91,33 @@ export default function Fornecedores() {
   const setField = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
     if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
+  };
+
+  // ── Busca CEP e preenche campos ──────────────────────
+  const handleCepBuscar = async (cepValue) => {
+    const endereco = await buscarCep(cepValue || form.cep);
+    if (endereco) {
+      setForm(f => ({
+        ...f,
+        cep:      endereco.cep,
+        endereco: endereco.endereco,
+        bairro:   endereco.bairro,
+        cidade:   endereco.cidade,
+        estado:   endereco.estado,
+      }));
+      toast.success('Endereço preenchido automaticamente!');
+    }
+  };
+
+  const handleCepBlur = () => {
+    const cepLimpo = String(form.cep).replace(/\D/g, '');
+    if (cepLimpo.length === 8) handleCepBuscar(form.cep);
+  };
+
+  const handleCepChange = (e) => {
+    const formatted = formatCEP(e.target.value);
+    setField('cep', formatted);
+    limparErroCep();
   };
 
   const handleSubmit = async (ev) => {
@@ -99,7 +161,6 @@ export default function Fornecedores() {
 
   return (
     <div>
-      {/* ✅ Topbar com todos os botões corretamente no actions */}
       <Topbar
         title="Fornecedores"
         subtitle={`${items.length} fornecedor(es) cadastrado(s)`}
@@ -175,6 +236,8 @@ export default function Fornecedores() {
               <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
             </div>
             <form onSubmit={handleSubmit} noValidate>
+
+              {/* Nome + CNPJ */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Nome *</label>
@@ -189,6 +252,7 @@ export default function Fornecedores() {
                 </div>
               </div>
 
+              {/* Contato + Email */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Contato</label>
@@ -203,6 +267,7 @@ export default function Fornecedores() {
                 </div>
               </div>
 
+              {/* Telefone + Categoria */}
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Telefone</label>
@@ -216,26 +281,99 @@ export default function Fornecedores() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Endereço</label>
-                <input className="form-input" value={form.endereco}
-                  onChange={e => setField('endereco', e.target.value)} placeholder="Endereço completo" />
+              {/* ── Seção de Endereço com ViaCEP ── */}
+              <div style={{
+                background: 'var(--bg3)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '14px 16px',
+                marginBottom: 14,
+              }}>
+                <div style={{
+                  fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.06em', color: 'var(--text3)',
+                  marginBottom: 12, fontFamily: 'Bricolage Grotesque, sans-serif',
+                }}>
+                  📍 Endereço
+                </div>
+
+                {/* CEP com busca */}
+                <div className="form-group">
+                  <label className="form-label">CEP</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className={`form-input${erroCep ? ' error' : ''}`}
+                      value={form.cep || ''}
+                      onChange={handleCepChange}
+                      onBlur={handleCepBlur}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      disabled={loadingCep}
+                      style={{ paddingRight: 42 }}
+                    />
+                    {/* Botão buscar / spinner */}
+                    <button
+                      type="button"
+                      onClick={() => handleCepBuscar()}
+                      disabled={loadingCep || String(form.cep || '').replace(/\D/g, '').length !== 8}
+                      title="Buscar CEP"
+                      style={{
+                        position: 'absolute', right: 10, top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        padding: 0, display: 'flex', alignItems: 'center',
+                        color: loadingCep ? 'var(--primary)' : 'var(--text3)',
+                        transition: 'color 0.15s',
+                        opacity: String(form.cep || '').replace(/\D/g, '').length !== 8 ? 0.4 : 1,
+                      }}
+                    >
+                      {loadingCep
+                        ? <Loader size={15} style={{ animation: 'spin 0.8s linear infinite' }} />
+                        : <Search size={15} />
+                      }
+                    </button>
+                  </div>
+                  {erroCep && <div className="field-error">{erroCep}</div>}
+                  {!erroCep && (
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
+                      Preenche endereço, bairro, cidade e estado automaticamente
+                    </div>
+                  )}
+                </div>
+
+                {/* Endereço + Bairro */}
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 2 }}>
+                    <label className="form-label">Endereço</label>
+                    <input className="form-input" value={form.endereco || ''}
+                      onChange={e => setField('endereco', e.target.value)} placeholder="Rua, número, complemento" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Bairro</label>
+                    <input className="form-input" value={form.bairro || ''}
+                      onChange={e => setField('bairro', e.target.value)} placeholder="Bairro" />
+                  </div>
+                </div>
+
+                {/* Cidade + Estado */}
+                <div className="form-row" style={{ marginBottom: 0 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Cidade</label>
+                    <input className="form-input" value={form.cidade || ''}
+                      onChange={e => setField('cidade', e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Estado</label>
+                    <select className="form-select" value={form.estado || ''}
+                      onChange={e => setField('estado', e.target.value)}>
+                      <option value="">—</option>
+                      {UFS.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Cidade</label>
-                  <input className="form-input" value={form.cidade} onChange={e => setField('cidade', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Estado</label>
-                  <select className="form-select" value={form.estado} onChange={e => setField('estado', e.target.value)}>
-                    <option value="">—</option>
-                    {UFS.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-
+              {/* Status */}
               <div className="form-group">
                 <label className="form-label">Status</label>
                 <select className="form-select" value={form.ativo ? 'true' : 'false'}
@@ -256,7 +394,6 @@ export default function Fornecedores() {
         </div>
       )}
 
-      {/* ✅ Modal de importação — irmão do modal de cadastro, nunca dentro dele */}
       {importModal && (
         <ImportacaoModal
           onClose={() => setImportModal(false)}
