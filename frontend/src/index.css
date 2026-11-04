@@ -812,3 +812,30 @@ tbody tr:hover td { background: var(--bg3); }
 }
 .alert-error   { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,92,114,0.25); }
 .alert-success { background: var(--success-dim); color: var(--success); }
+
+/* ── Marketplace — cores de cada loja ───────────────────────────────────────── */
+/* --mk-bg: fundo da marca · --mk-fg: texto sobre o fundo · --mk-text: texto/ícone colorido
+   --mk-dim: fundo suave · --mk-glow: sombra */
+.mk-ml {
+  --mk-bg:   #FFE600;               /* amarelo Mercado Livre */
+  --mk-fg:   #2D3277;               /* azul Mercado Livre */
+  --mk-text: #FFE600;
+  --mk-dim:  rgba(255,230,0,0.14);
+  --mk-glow: rgba(255,230,0,0.35);
+}
+.mk-shopee {
+  --mk-bg:   #EE4D2D;               /* laranja Shopee */
+  --mk-fg:   #FFFFFF;
+  --mk-text: #FF6A4D;
+  --mk-dim:  rgba(238,77,45,0.14);
+  --mk-glow: rgba(238,77,45,0.38);
+}
+/* No tema claro, amarelo como texto some no fundo — usa o azul da marca */
+[data-theme="light"] .mk-ml {
+  --mk-text: #2D3277;
+  --mk-dim:  rgba(45,50,119,0.09);
+  --mk-glow: rgba(255,230,0,0.55);
+}
+[data-theme="light"] .mk-shopee {
+  --mk-text: #EE4D2D;
+}

@@ -124,8 +124,8 @@ function DRow({ label, value }) {
 function DetailPanel({ product, store, onClose, onAction }) {
   if (!product) return null;
   const isML = store === 'ml';
-  const accentColor = isML ? 'var(--primary)' : '#FFBA42';
-  const accentText  = isML ? '#fff' : '#1a1a1a';
+  const accentColor = 'var(--mk-bg)';
+  const accentText  = 'var(--mk-fg)';
   const totalDist   = !isML ? product.dist?.reduce((a, b) => a + b, 0) || 1 : 1;
 
   const canPause    = isML ? product.status === 'active'  : product.status === 'NORMAL';
@@ -281,7 +281,7 @@ function DetailPanel({ product, store, onClose, onAction }) {
                   <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: 'var(--text3)', width: 18, textAlign: 'right' }}>{s}★</span>
                     <div className="progress-bar-wrap" style={{ flex: 1 }}>
-                      <div className="progress-bar" style={{ width: `${pct}%`, background: '#FFBA42' }} />
+                      <div className="progress-bar" style={{ width: `${pct}%`, background: 'var(--mk-bg)' }} />
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text3)', width: 24 }}>{cnt}</span>
                   </div>
@@ -354,7 +354,7 @@ function DetailPanel({ product, store, onClose, onAction }) {
             API Endpoint
           </p>
           <code style={{
-            fontSize: 11, color: isML ? 'var(--info)' : '#FFBA42',
+            fontSize: 11, color: 'var(--mk-text)',
             fontFamily: 'monospace', wordBreak: 'break-all',
           }}>
             {isML
@@ -516,7 +516,12 @@ function ProductModal({ product, store, onClose, onSave }) {
 
           <div className="modal-footer">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+              style={{ background: 'var(--mk-bg)', color: 'var(--mk-fg)', boxShadow: '0 2px 12px var(--mk-glow)' }}
+            >
               {saving ? 'Salvando…' : product ? 'Salvar alterações' : 'Criar produto'}
             </button>
           </div>
@@ -580,8 +585,8 @@ export default function Marketplace() {
 
   const isML    = store === 'ml';
   const items   = isML ? mlProducts : shopeeProducts;
-  const accentColor = isML ? 'var(--primary)' : '#FFBA42';
-  const accentText  = isML ? '#fff' : '#1a1a1a';
+  const accentColor = 'var(--mk-bg)';
+  const accentText  = 'var(--mk-fg)';
 
   // ── Filtros ──────────────────────────────────────────────────────────────────
   const filtered = items.filter((p) => {
@@ -651,7 +656,10 @@ export default function Marketplace() {
 
   // ────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingRight: selected ? 396 : 0, transition: 'padding-right 0.25s' }}>
+    <div
+      className={isML ? 'mk-ml' : 'mk-shopee'}
+      style={{ paddingRight: selected ? 396 : 0, transition: 'padding-right 0.25s' }}
+    >
       <Topbar
         title="Marketplace"
         subtitle={`${items.length} produto(s) · ${activeCount} ativos${semEstoque > 0 ? ` · ${semEstoque} sem estoque` : ''}`}
@@ -669,13 +677,10 @@ export default function Marketplace() {
                 { key: 'shopee', label: 'Shopee',        icon: Store       },
               ].map(({ key, label, icon: Icon }) => {
                 const active = store === key;
-                const bg     = active ? (key === 'ml' ? 'var(--primary)' : '#FFBA42') : 'transparent';
-                const color  = active ? (key === 'ml' ? '#fff' : '#1a1a1a') : 'var(--text3)';
-                const shadow = active
-                  ? key === 'ml'
-                    ? '0 2px 8px var(--primary-glow)'
-                    : '0 2px 8px rgba(255,186,66,0.35)'
-                  : 'none';
+                // a aba ativa usa as cores da própria loja (definidas em .mk-ml / .mk-shopee)
+                const bg     = active ? 'var(--mk-bg)' : 'transparent';
+                const color  = active ? 'var(--mk-fg)' : 'var(--text3)';
+                const shadow = active ? '0 2px 8px var(--mk-glow)' : 'none';
                 return (
                   <button
                     key={key}
@@ -699,6 +704,7 @@ export default function Marketplace() {
             <button
               className="btn btn-primary"
               onClick={() => { setEditing(null); setModal(true); }}
+              style={{ background: 'var(--mk-bg)', color: 'var(--mk-fg)', boxShadow: '0 2px 12px var(--mk-glow)' }}
             >
               <Plus size={15} /> Novo Produto
             </button>
@@ -751,8 +757,8 @@ export default function Marketplace() {
           {
             label: 'Produtos ativos', value: `${activeCount} / ${items.length}`,
             sub: 'anúncios publicados', icon: Package,
-            color: isML ? 'var(--primary)' : '#FFBA42',
-            dim: isML ? 'var(--primary-dim)' : 'rgba(255,186,66,0.14)',
+            color: 'var(--mk-text)',
+            dim: 'var(--mk-dim)',
           },
           {
             label: 'Estoque total', value: `${totalStock} un`,
@@ -873,11 +879,7 @@ export default function Marketplace() {
                       onClick={() => setSelected((s) => (s?.id === p.id ? null : p))}
                       style={{
                         cursor: 'pointer',
-                        background: isSelected
-                          ? isML
-                            ? 'var(--primary-dim)'
-                            : 'rgba(255,186,66,0.07)'
-                          : 'transparent',
+                        background: isSelected ? 'var(--mk-dim)' : 'transparent',
                       }}
                     >
                       {/* Produto */}
