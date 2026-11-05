@@ -25,18 +25,86 @@ const calculos = (f) => {
   return { custoTotal, custoCheio, margem, impostoValor, frete };
 };
 
-const MESES       = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+// KPIs do mês/dia para qualquer subconjunto de vendas (todas, só Shopee ou só Mercado Livre)
+const calcKpis = (vs) => {
+  const now      = new Date();
+  const hoje     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mesAtual = now.getMonth();
+  const anoAtual = now.getFullYear();
+
+  const vendasMes  = vs.filter(v => { const d = new Date(v.data); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; });
+  const vendasHoje = vs.filter(v => new Date(v.data) >= hoje);
+
+  const somaV = (a) => a.reduce((t, v) => t + (parseFloat(v.valorVenda) || 0), 0);
+  const somaC = (a) => a.reduce((t, v) => t + calculos(v).custoCheio,          0);
+  const somaF = (a) => a.reduce((t, v) => t + calculos(v).frete,               0);
+  const somaM = (a) => a.reduce((t, v) => t + calculos(v).margem,              0);
+
+  const renda  = somaV(vendasMes);
+  const custo  = somaC(vendasMes);
+  const frete  = somaF(vendasMes);
+  const margem = somaM(vendasMes);
+
+  return {
+    renda,
+    lucroMesPct:        renda ? (margem / renda) * 100 : 0,
+    margemValor:        margem,
+    custoPct:           renda ? (custo  / renda) * 100 : 0,
+    custoValor:         custo,
+    custoPorEntregaPct: renda ? (frete  / renda) * 100 : 0,
+    custoPorEntrega:    vendasMes.length ? frete / vendasMes.length : 0,
+    freteValor:         frete,
+    rendaHoje:          somaV(vendasHoje),
+    qtdHoje:            vendasHoje.length,
+    totalMes:           vendasMes.length,
+  };
+};
+
+const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+// Cores oficiais de cada loja (e variações): main = cor da marca · light/dark = degradês · text = legível sobre fundo escuro
+const BRAND = {
+  shopee: { main: '#EE4D2D', light: '#FF7A5C', dark: '#C23A1E', text: '#FF6A4D', ink: '#FFFFFF' },
+  ml:     { main: '#FFE600', light: '#FFF27A', dark: '#E6CF00', text: '#FFE600', ink: '#2D3277', edge: '#2D3277' },
+};
 const COLORS_PLAT = {
-  'Shopee':        '#FFBA42',
-  'Mercado Livre': '#1a7fa8',
+  'Shopee':        BRAND.shopee.main,
+  'Mercado Livre': BRAND.ml.main,
   'Manual':        '#2ec98a',
   'Outro':         '#A8E8F9',
 };
 
-// ── Gráfico de linha ──────────────────────────────────────
-function LineChart({ data, color = '#1a7fa8', height = 120 }) {
+// Bolinha/quadradinho de legenda (o amarelo do ML ganha um contorno azul para aparecer no tema claro)
+function Dot({ color, ml = false, square = false, size = 10 }) {
+  return (
+    <div style={{
+      width: size, height: size, flexShrink: 0,
+      borderRadius: square ? 3 : '50%',
+      background: color,
+      boxShadow: ml ? `0 0 0 1px ${BRAND.ml.edge}80` : 'none',
+    }} />
+  );
+}
+
+// Etiqueta com o nome da loja nas cores da marca
+function PlatTag({ k, children }) {
+  const b = BRAND[k];
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 8px', borderRadius: 999,
+      background: b.main, color: b.ink, fontWeight: 700, fontSize: 11.5,
+      border: k === 'ml' ? `1px solid ${b.edge}55` : '1px solid transparent',
+    }}>
+      {children}
+    </span>
+  );
+}
+
+// ── Gráfico de linha (uma linha por loja) ─────────────────
+function LineChart({ labels, series, height = 120 }) {
   const containerRef = useRef(null);
-  const [width, setWidth] = useState(600);
+  const [width, setWidth]     = useState(600);
+  const [hovered, setHovered] = useState(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -48,50 +116,68 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
     return () => ro.disconnect();
   }, []);
 
-  if (!data || data.length < 2) return <div ref={containerRef} style={{ width: '100%' }} />;
+  if (!labels || labels.length < 2 || !series?.length) return <div ref={containerRef} style={{ width: '100%' }} />;
 
   const PAD_LEFT = 56, PAD_RIGHT = 12, PAD_TOP = 10, PAD_BOT = 28;
   const w = width;
   const h = height + PAD_TOP + PAD_BOT;
-  const max = Math.max(...data.map(d => d.value), 1);
+  const n = labels.length;
+  const max = Math.max(...series.flatMap(s => s.values), 1);
 
   const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
     value: max * t,
     y: h - PAD_BOT - t * height,
   }));
 
-  const xOf = (i) => PAD_LEFT + (i / (data.length - 1)) * (w - PAD_LEFT - PAD_RIGHT);
+  const xOf = (i) => PAD_LEFT + (i / (n - 1)) * (w - PAD_LEFT - PAD_RIGHT);
   const yOf = (v) => h - PAD_BOT - (v / max) * height;
+  const colW = (w - PAD_LEFT - PAD_RIGHT) / (n - 1);
 
-  const pts  = data.map((d, i) => `${xOf(i)},${yOf(d.value)}`).join(' ');
-  const area = `${pts} ${xOf(data.length - 1)},${h - PAD_BOT} ${xOf(0)},${h - PAD_BOT}`;
+  const pointsOf = (s) => s.values.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
+  const areaOf   = (s) => `${pointsOf(s)} ${xOf(n - 1)},${h - PAD_BOT} ${xOf(0)},${h - PAD_BOT}`;
+  const totalAt  = (i) => series.reduce((a, s) => a + s.values[i], 0);
 
-  const [hovered, setHovered] = useState(null);
+  const boxH = 30 + series.length * 18 + (series.length > 1 ? 18 : 0);
 
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
       {hovered !== null && (
         <div style={{
           position: 'absolute',
-          top: yOf(data[hovered].value) - 44,
-          left: Math.min(Math.max(xOf(hovered) - 52, 0), w - 110),
+          top: Math.max(yOf(Math.max(...series.map(s => s.values[hovered]))) - boxH - 8, 0),
+          left: Math.min(Math.max(xOf(hovered) - 70, 0), w - 160),
           background: 'var(--bg3)',
           border: '1px solid var(--border)',
-          borderRadius: 8, padding: '6px 10px',
+          borderRadius: 8, padding: '8px 12px',
           fontSize: 12, fontWeight: 700, color: 'var(--text)',
           pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10,
-          boxShadow: 'var(--shadow-sm)',
+          boxShadow: 'var(--shadow-sm)', minWidth: 140,
         }}>
-          <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{data[hovered].mes} · </span>
-          {fmt(data[hovered].value)}
+          <div style={{ color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>{labels[hovered]}</div>
+          {series.map(s => (
+            <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, lineHeight: '18px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, color: 'var(--text2)' }}>
+                <Dot color={s.color} ml={!!s.casing} size={8} />{s.name}
+              </span>
+              <span>{fmt(s.values[hovered])}</span>
+            </div>
+          ))}
+          {series.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, lineHeight: '18px', marginTop: 2, paddingTop: 2, borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontWeight: 500, color: 'var(--text3)' }}>Total</span>
+              <span>{fmt(totalAt(hovered))}</span>
+            </div>
+          )}
         </div>
       )}
       <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} style={{ display: 'block', overflow: 'visible' }}>
         <defs>
-          <linearGradient id="lg-fatur" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={color} stopOpacity="0"    />
-          </linearGradient>
+          {series.map((s, si) => (
+            <linearGradient key={si} id={`lg-fatur-${si}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor={s.color} stopOpacity="0.22" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0"    />
+            </linearGradient>
+          ))}
         </defs>
         {ticks.map((t, i) => (
           <g key={i}>
@@ -103,22 +189,35 @@ function LineChart({ data, color = '#1a7fa8', height = 120 }) {
             </text>
           </g>
         ))}
-        <polygon points={area} fill="url(#lg-fatur)" />
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {data.map((d, i) => (
-          <text key={d.mes} x={xOf(i)} y={h - PAD_BOT + 16} textAnchor="middle" fontSize="10" fill="var(--text3)">
-            {(w > 480 || i % 2 === 0) ? d.mes : ''}
+        {hovered !== null && (
+          <line x1={xOf(hovered)} x2={xOf(hovered)} y1={PAD_TOP} y2={h - PAD_BOT}
+            stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+        )}
+        {series.map((s, si) => <polygon key={`a${si}`} points={areaOf(s)} fill={`url(#lg-fatur-${si})`} />)}
+        {series.map((s, si) => (
+          <g key={`l${si}`}>
+            {s.casing && (
+              <polyline points={pointsOf(s)} fill="none" stroke={s.casing} strokeOpacity="0.55"
+                strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+            )}
+            <polyline points={pointsOf(s)} fill="none" stroke={s.color}
+              strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        ))}
+        {labels.map((mes, i) => (
+          <text key={mes} x={xOf(i)} y={h - PAD_BOT + 16} textAnchor="middle" fontSize="10" fill="var(--text3)">
+            {(w > 480 || i % 2 === 0) ? mes : ''}
           </text>
         ))}
-        {data.map((d, i) => (
-          <g key={i}>
-            <circle cx={xOf(i)} cy={yOf(d.value)} r="3.5"
-              fill={hovered === i ? '#fff' : color}
-              stroke={hovered === i ? color : '#fff'} strokeWidth="2" />
-            <circle cx={xOf(i)} cy={yOf(d.value)} r="14" fill="transparent"
-              onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-              style={{ cursor: 'default' }} />
-          </g>
+        {series.map((s, si) => s.values.map((v, i) => (
+          <circle key={`${si}-${i}`} cx={xOf(i)} cy={yOf(v)} r="3.5"
+            fill={hovered === i ? '#fff' : s.color}
+            stroke={hovered === i ? s.color : (s.casing || '#fff')} strokeWidth="2" />
+        )))}
+        {labels.map((mes, i) => (
+          <rect key={`h${i}`} x={xOf(i) - colW / 2} y={PAD_TOP} width={colW} height={height}
+            fill="transparent" style={{ cursor: 'default' }}
+            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} />
         ))}
       </svg>
     </div>
@@ -152,12 +251,17 @@ function Donut({ segments, size = 130 }) {
 }
 
 // ── KPI Card ──────────────────────────────────────────────
-function KpiCard({ label, value, sub, accentColor }) {
+// split = { sp, ml, wSp, wMl }: valor de cada loja (nas cores da marca) e peso para a barra inferior
+function KpiCard({ label, value, sub, accentColor, split }) {
+  const wSp  = Math.max(split?.wSp || 0, 0);
+  const wMl  = Math.max(split?.wMl || 0, 0);
+  const wTot = wSp + wMl;
+
   return (
     <div style={{
       background: '#14213D',
       border: `1px solid ${accentColor}33`,
-      borderRadius: 12, padding: '18px 20px',
+      borderRadius: 12, padding: '18px 20px 22px',
       position: 'relative', overflow: 'hidden',
       transition: 'transform 0.18s, box-shadow 0.18s', cursor: 'default',
     }}
@@ -171,7 +275,27 @@ function KpiCard({ label, value, sub, accentColor }) {
         {value}
       </div>
       <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{sub}</div>
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accentColor, borderRadius: '0 0 12px 12px', opacity: 0.7 }} />
+
+      {split && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 10, fontSize: 11.5, fontWeight: 700 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: BRAND.shopee.text }}>
+            <Dot color={BRAND.shopee.main} size={7} />{split.sp}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: BRAND.ml.text }}>
+            <Dot color={BRAND.ml.main} size={7} />{split.ml}
+          </span>
+        </div>
+      )}
+
+      {/* barra inferior: dividida entre Shopee e Mercado Livre quando há dados das lojas */}
+      {split && wTot > 0 ? (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, display: 'flex', overflow: 'hidden', borderRadius: '0 0 12px 12px' }}>
+          <div style={{ flex: wSp, background: `linear-gradient(90deg, ${BRAND.shopee.dark}, ${BRAND.shopee.main})` }} />
+          <div style={{ flex: wMl, background: `linear-gradient(90deg, ${BRAND.ml.main}, ${BRAND.ml.light})` }} />
+        </div>
+      ) : (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accentColor, borderRadius: '0 0 12px 12px', opacity: 0.7 }} />
+      )}
     </div>
   );
 }
@@ -198,39 +322,10 @@ export default function Dashboard() {
   // ── Mescla vendas da API + vendas do Marketplace ─────────────────────────────
   const vendas = useMemo(() => [...apiVendas, ...mkVendas], [apiVendas, mkVendas]);
 
-  // ── KPIs ─────────────────────────────────────────────────────────────────────
-  const kpis = useMemo(() => {
-    const now      = new Date();
-    const hoje     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const mesAtual = now.getMonth();
-    const anoAtual = now.getFullYear();
-
-    const vendasMes  = vendas.filter(v => { const d = new Date(v.data); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; });
-    const vendasHoje = vendas.filter(v => new Date(v.data) >= hoje);
-
-    const somaV = (a) => a.reduce((s, v) => s + (parseFloat(v.valorVenda)       || 0), 0);
-    const somaC = (a) => a.reduce((s, v) => s + calculos(v).custoCheio,               0);
-    const somaF = (a) => a.reduce((s, v) => s + calculos(v).frete,                    0);
-    const somaM = (a) => a.reduce((s, v) => s + calculos(v).margem,                   0);
-
-    const renda  = somaV(vendasMes);
-    const custo  = somaC(vendasMes);
-    const frete  = somaF(vendasMes);
-    const margem = somaM(vendasMes);
-
-    return {
-      renda,
-      lucroMesPct:        renda ? (margem / renda) * 100 : 0,
-      margemValor:        margem,
-      custoPct:           renda ? (custo  / renda) * 100 : 0,
-      custoValor:         custo,
-      custoPorEntregaPct: renda ? (frete  / renda) * 100 : 0,
-      custoPorEntrega:    vendasMes.length ? frete / vendasMes.length : 0,
-      rendaHoje:          somaV(vendasHoje),
-      qtdHoje:            vendasHoje.length,
-      totalMes:           vendasMes.length,
-    };
-  }, [vendas]);
+  // ── KPIs (geral + por loja) ──────────────────────────────────────────────────
+  const kpis   = useMemo(() => calcKpis(vendas),                                          [vendas]);
+  const kpisSp = useMemo(() => calcKpis(vendas.filter(v => v.tipo === 'Shopee')),         [vendas]);
+  const kpisMl = useMemo(() => calcKpis(vendas.filter(v => v.tipo === 'Mercado Livre')),  [vendas]);
 
   // ── Top produtos ──────────────────────────────────────────────────────────────
   const topProdutos = useMemo(() => {
@@ -266,13 +361,27 @@ export default function Dashboard() {
   }, [vendas]);
 
   const evolucao = useMemo(() => {
-    return MESES.map((mes, i) => ({
-      mes,
-      value: vendas
-        .filter(v => { const d = new Date(v.data); return d.getFullYear() === anoFilt && d.getMonth() === i; })
-        .reduce((a, v) => a + (parseFloat(v.valorVenda) || 0), 0),
-    }));
+    return MESES.map((mes, i) => {
+      const doMes = vendas.filter(v => { const d = new Date(v.data); return d.getFullYear() === anoFilt && d.getMonth() === i; });
+      const soma  = (fn) => doMes.filter(fn).reduce((a, v) => a + (parseFloat(v.valorVenda) || 0), 0);
+      const shopee = soma(v => v.tipo === 'Shopee');
+      const ml     = soma(v => v.tipo === 'Mercado Livre');
+      const outros = soma(v => v.tipo !== 'Shopee' && v.tipo !== 'Mercado Livre');
+      return { mes, shopee, ml, outros, total: shopee + ml + outros };
+    });
   }, [vendas, anoFilt]);
+
+  // Uma linha por loja, cada uma na cor da marca
+  const seriesEvolucao = useMemo(() => {
+    const out = [
+      { name: 'Shopee',        color: BRAND.shopee.main, values: evolucao.map(e => e.shopee) },
+      { name: 'Mercado Livre', color: BRAND.ml.main, casing: BRAND.ml.edge, values: evolucao.map(e => e.ml) },
+    ];
+    if (evolucao.some(e => e.outros > 0)) {
+      out.push({ name: 'Outros', color: COLORS_PLAT['Manual'], values: evolucao.map(e => e.outros) });
+    }
+    return out;
+  }, [evolucao]);
 
   const maxBar = Math.max(...topProdutos.map(p => Math.max(p.shopee, p.ml)), 1);
 
@@ -319,18 +428,23 @@ export default function Dashboard() {
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />
           <span>
             <strong style={{ color: 'var(--text)' }}>{mkVendas.length}</strong> vendas do Marketplace
-            (ML + Shopee) incluídas nos indicadores abaixo.
+            (<PlatTag k="ml">ML</PlatTag> + <PlatTag k="shopee">Shopee</PlatTag>) incluídas nos indicadores abaixo.
           </span>
         </div>
       )}
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}                sub={`${kpis.totalMes} pedido(s) no mês`}         accentColor="#2ec98a" />
-        <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}       sub={fmt(kpis.margemValor)}                       accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'} />
-        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}          sub={fmt(kpis.custoValor)}                        accentColor="#A8E8F9" />
-        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`}    accentColor="#A8E8F9" />
-        <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}            sub={`${kpis.qtdHoje} pedido(s)`}                 accentColor="#A8E8F9" />
+        <KpiCard label="Renda Atual"       value={fmt(kpis.renda)}                 sub={`${kpis.totalMes} pedido(s) no mês`}      accentColor="#2ec98a"
+          split={{ sp: fmt(kpisSp.renda), ml: fmt(kpisMl.renda), wSp: kpisSp.renda, wMl: kpisMl.renda }} />
+        <KpiCard label="Lucro Total Mês"   value={fmtPct(kpis.lucroMesPct)}        sub={fmt(kpis.margemValor)}                    accentColor={kpis.lucroMesPct >= 0 ? '#2ec98a' : '#f05365'}
+          split={{ sp: fmtPct(kpisSp.lucroMesPct), ml: fmtPct(kpisMl.lucroMesPct), wSp: kpisSp.margemValor, wMl: kpisMl.margemValor }} />
+        <KpiCard label="Custo Total"       value={fmtPct(kpis.custoPct)}           sub={fmt(kpis.custoValor)}                     accentColor="#A8E8F9"
+          split={{ sp: fmtPct(kpisSp.custoPct), ml: fmtPct(kpisMl.custoPct), wSp: kpisSp.custoValor, wMl: kpisMl.custoValor }} />
+        <KpiCard label="Custo por Entrega" value={fmtPct(kpis.custoPorEntregaPct)} sub={`${fmt(kpis.custoPorEntrega)} / pedido`} accentColor="#A8E8F9"
+          split={{ sp: fmtPct(kpisSp.custoPorEntregaPct), ml: fmtPct(kpisMl.custoPorEntregaPct), wSp: kpisSp.freteValor, wMl: kpisMl.freteValor }} />
+        <KpiCard label="Vendas Hoje"       value={fmt(kpis.rendaHoje)}             sub={`${kpis.qtdHoje} pedido(s)`}              accentColor="#A8E8F9"
+          split={{ sp: fmt(kpisSp.rendaHoje), ml: fmt(kpisMl.rendaHoje), wSp: kpisSp.rendaHoje, wMl: kpisMl.rendaHoje }} />
       </div>
 
       {/* Gráficos */}
@@ -346,7 +460,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
                 {[['Shopee', COLORS_PLAT['Shopee']], ['Mercado Livre', COLORS_PLAT['Mercado Livre']]].map(([label, color]) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+                    <Dot color={color} ml={label === 'Mercado Livre'} square />
                     {label}
                   </div>
                 ))}
@@ -355,8 +469,8 @@ export default function Dashboard() {
                 {topProdutos.map(p => (
                   <div key={p.nome} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', width: '100%' }}>
-                      <div style={{ flex: 1, height: `${Math.max((p.shopee / maxBar) * 110, p.shopee > 0 ? 4 : 0)}px`, background: COLORS_PLAT['Shopee'],        borderRadius: '3px 3px 0 0', transition: 'height 0.5s ease' }} />
-                      <div style={{ flex: 1, height: `${Math.max((p.ml     / maxBar) * 110, p.ml     > 0 ? 4 : 0)}px`, background: COLORS_PLAT['Mercado Livre'], borderRadius: '3px 3px 0 0', transition: 'height 0.5s ease' }} />
+                      <div style={{ flex: 1, height: `${Math.max((p.shopee / maxBar) * 110, p.shopee > 0 ? 4 : 0)}px`, background: `linear-gradient(180deg, ${BRAND.shopee.light}, ${BRAND.shopee.main})`, borderRadius: '3px 3px 0 0', transition: 'height 0.5s ease' }} />
+                      <div style={{ flex: 1, height: `${Math.max((p.ml     / maxBar) * 110, p.ml     > 0 ? 4 : 0)}px`, background: `linear-gradient(180deg, ${BRAND.ml.light}, ${BRAND.ml.main})`, boxShadow: `inset 0 0 0 1px ${BRAND.ml.edge}55`, borderRadius: '3px 3px 0 0', transition: 'height 0.5s ease' }} />
                     </div>
                     <div style={{ fontSize: 10.5, color: 'var(--text2)', textAlign: 'center', maxWidth: 70, lineHeight: 1.3 }}>
                       {p.nome.length > 12 ? p.nome.slice(0, 12) + '…' : p.nome}
@@ -381,7 +495,7 @@ export default function Dashboard() {
                   const total = marketplace.reduce((a, x) => a + x.value, 0) || 1;
                   return (
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
+                      <Dot color={m.color} ml={m.label === 'Mercado Livre'} />
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{m.label}</div>
                         <div style={{ fontSize: 11, color: 'var(--text3)' }}>
@@ -403,7 +517,15 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div className="chart-title" style={{ marginBottom: 0 }}>📈 Evolução de Faturamento</div>
             <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>
-              Total: {fmt(evolucao.reduce((a, e) => a + e.value, 0))} em {anoFilt}
+              Total: {fmt(evolucao.reduce((a, e) => a + e.total, 0))} em {anoFilt}
+            </div>
+            <div style={{ display: 'flex', gap: 14, marginTop: 4, flexWrap: 'wrap' }}>
+              {seriesEvolucao.map(sr => (
+                <div key={sr.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+                  <Dot color={sr.color} ml={!!sr.casing} square />
+                  {sr.name}
+                </div>
+              ))}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -419,10 +541,10 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-        {evolucao.every(e => e.value === 0) ? (
+        {evolucao.every(e => e.total === 0) ? (
           <div className="empty" style={{ padding: 20 }}><p>Sem vendas em {anoFilt}</p></div>
         ) : (
-          <LineChart data={evolucao} color="var(--primary)" height={120} />
+          <LineChart labels={MESES} series={seriesEvolucao} height={120} />
         )}
       </div>
 
@@ -434,8 +556,8 @@ export default function Dashboard() {
       }}>
         <TrendingUp size={14} color="var(--primary)" />
         <span>
-          Dados de <strong style={{ color: 'var(--text)' }}>Shopee</strong> e{' '}
-          <strong style={{ color: 'var(--text)' }}>Mercado Livre</strong> integrados via{' '}
+          Dados de <PlatTag k="shopee">Shopee</PlatTag> e{' '}
+          <PlatTag k="ml">Mercado Livre</PlatTag> integrados via{' '}
           Marketplace · vendas da API backend também incluídas quando disponíveis.
         </span>
       </div>
