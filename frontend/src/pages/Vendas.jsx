@@ -3,8 +3,12 @@ import { Plus, X, ShoppingBag, TrendingUp, DollarSign, Package, FileSpreadsheet 
 import { vendaService, produtoService } from '../services/api';
 import { useMarketplace } from '../context/MarketplaceContext';
 import ImportacaoModal from '../components/ImportacaoModal';
+import Paginacao from '../components/Paginacao';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
+
+// A API agora devolve Page<T> ({ content, totalElements, ... }); aceita também array puro.
+const lista = (res) => Array.isArray(res?.data) ? res.data : (res?.data?.content ?? []);
 
 // ─── Helpers ────────────────────────────────────────────
 const fmt     = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -59,10 +63,13 @@ export default function Vendas() {
   const [periodo, setPeriodo] = useState('all');
   const [origem,  setOrigem]  = useState('all');
 
+  const [page,     setPage]     = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+
   const load = () => {
     setLoading(true);
     Promise.all([vendaService.listar(), produtoService.listar()])
-      .then(([v, p]) => { setApiItems(v.data || []); setProdutos(p.data || []); })
+      .then(([v, p]) => { setApiItems(lista(v)); setProdutos(lista(p)); })
       .catch(() => toast.error('Erro ao carregar vendas'))
       .finally(() => setLoading(false));
   };
@@ -95,7 +102,15 @@ export default function Vendas() {
     });
   }, [allItems, search, tipo, periodo, origem]);
 
-  // Totalizadores
+  // volta para a 1ª página quando muda qualquer filtro
+  useEffect(() => { setPage(0); }, [search, tipo, periodo, origem]);
+
+  const paged = useMemo(
+    () => filtered.slice(page * pageSize, page * pageSize + pageSize),
+    [filtered, page, pageSize]
+  );
+
+  // Totalizadores (sobre TODOS os filtrados, não só a página)
   const totais = useMemo(() => filtered.reduce((acc, i) => {
     const c = calculos(i);
     acc.vendas += parseFloat(i.valorVenda) || 0;
@@ -256,7 +271,7 @@ export default function Vendas() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((i, idx) => {
+                {paged.map((i, idx) => {
                   const c = calculos(i);
                   const margemColor = c.margem >= 0 ? 'var(--success)' : 'var(--danger)';
                   return (
@@ -298,6 +313,11 @@ export default function Vendas() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <Paginacao page={page} pageSize={pageSize} total={filtered.length}
+            onPage={setPage} onSize={(s) => { setPageSize(s); setPage(0); }} />
         )}
       </div>
 

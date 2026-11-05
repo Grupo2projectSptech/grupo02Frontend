@@ -4,8 +4,12 @@ import { produtoService, fornecedorService } from '../services/api';
 import { validators, validateForm } from '../utils/validators';
 import { formatCurrency } from '../utils/formatters';
 import ImportacaoModal from '../components/ImportacaoModal';
+import Paginacao from '../components/Paginacao';
 import Topbar from '../components/layout/Topbar';
 import toast from 'react-hot-toast';
+
+// A API agora devolve Page<T> ({ content, totalElements, ... }); aceita também array puro.
+const lista = (res) => Array.isArray(res?.data) ? res.data : (res?.data?.content ?? []);
 
 const SCHEMA = {
   nome:    [v => validators.required(v, 'Nome')],
@@ -31,16 +35,19 @@ export default function Produtos() {
   const [errors,       setErrors]       = useState({});
   const [saving,       setSaving]       = useState(false);
   const [importModal,  setImportModal]  = useState(false);
+  const [page,         setPage]         = useState(0);
+  const [pageSize,     setPageSize]     = useState(25);
 
   const load = () => {
     setLoading(true);
     Promise.all([produtoService.listar(), fornecedorService.listar()])
-      .then(([p, f]) => { setItems(p.data); setFornecedores(f.data); })
+      .then(([p, f]) => { setItems(lista(p)); setFornecedores(lista(f)); })
       .catch(() => toast.error('Erro ao carregar'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { setPage(0); }, [search, filterLow]);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setErrors({}); setModal(true); };
   const openEdit   = (item) => {
@@ -102,6 +109,7 @@ export default function Produtos() {
   );
   if (filterLow) filtered = filtered.filter(i => !i.estoque || i.estoque === 0);
   const semEstoque = items.filter(i => !i.estoque || i.estoque === 0).length;
+  const paged = filtered.slice(page * pageSize, page * pageSize + pageSize);
 
   return (
     <div>
@@ -160,7 +168,7 @@ export default function Produtos() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => (
+                {paged.map(item => (
                   <tr key={item.id}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{item.nome}</div>
@@ -187,6 +195,11 @@ export default function Produtos() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <Paginacao page={page} pageSize={pageSize} total={filtered.length}
+            onPage={setPage} onSize={(s) => { setPageSize(s); setPage(0); }} />
         )}
       </div>
 

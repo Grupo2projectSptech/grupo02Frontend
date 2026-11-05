@@ -5,6 +5,9 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../context/AuthContext';
 
+// A API agora devolve Page<T> ({ content, totalElements, ... }); aceita também array puro.
+const lista = (res) => Array.isArray(res?.data) ? res.data : (res?.data?.content ?? []);
+
 const fmt    = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
@@ -187,7 +190,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([vendaService.listar(), produtoService.listar()])
-      .then(([v, p]) => { setApiVendas(v.data || []); setProdutos(p.data || []); })
+      .then(([v, p]) => { setApiVendas(lista(v)); setProdutos(lista(p)); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
